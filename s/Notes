@@ -931,6 +931,7 @@
 ;; --------------------------------------------------------------------------------------------------
 ;;
 ;; 21-Apr-94    3.51    (RM) added power saving code for Stork
+;; 15-Sep-95	3.71    Remove mode check from module initialisation to enable soft loadable modes.
 ;;
 ;;----------------------------------------------------------------------------
 ;;
