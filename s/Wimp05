@@ -3007,19 +3007,33 @@ read_current_alphabet
         EXIT
       ]
 
-
 ; checkvalid - scan validation string to see if char is acceptable
 ; Entry:  R3 -> validation string (<=0 ==> none)
 ;         R6 = char under consideration
-;         alphabet = current alphabet
+;         [alphabet] = current alphabet
+;       [ SpacesInFilenames
+;       [ UTF8
+;         R4 = length of character (string form)
+;         [tempworkspace] = char under consideration (string form)
+;       ]
+;         [savedcharcode] = char under consideration (word form)
+;       ]
 ; Exit:   Z set ==> char is OK
 ;         Z unset ==> pass back to user instead
+;       [ SpacesInFilenames
+;         R4, [tempworkspace], R6, [savedcharcode] may be updated (R6 only used in non-UTF8 case)
+;       ]
 
 
 ;   R7 = 0/1 char is OK/not OK so far
 ;   R8 = 0/1 we are trying to in/exclude characters
 
 checkvalid
+      [ SpacesInFilenames
+        TEQ     R6,#' '
+        BEQ     checkvalid_convertspace
+checkvalid_lateentry
+      ]
         CMP     R3,R3,ASR #31
         MOVEQ   PC,LR           ; Z set ==> char ok
 
@@ -3152,6 +3166,29 @@ checkvalid_getchar   ; also used in interpreting WimpValidation_Display
         BEQ     %BT01
         MOV     R10, R6
         EXITS
+      ]
+
+      [ SpacesInFilenames
+checkvalid_convertspace
+        Entry
+        BL      checkvalid_lateentry
+        EXIT    EQ                      ; space is already OK
+        MOV     R6, #&A0
+        BL      checkvalid_lateentry
+        MOVNE   R6, #' '                ; hard space not allowed either, so put back soft space
+        EXIT    NE
+        STR     R6, savedcharcode
+      [ UTF8
+        LDRB    R14, alphabet
+        TEQ     R14, #ISOAlphabet_UTF8
+        STRNEB  R6, tempworkspace       ; change string to &A0 if not UTF-8
+        MOVEQ   R14, #&C2
+        STREQB  R14, tempworkspace      ; change string to &C2 &A0 if UTF-8
+        STREQB  R6, tempworkspace+1
+        MOVEQ   R4, #2
+        TEQNE   R0, R0                  ; restore EQ condition
+      ]
+        EXIT
       ]
 
 
