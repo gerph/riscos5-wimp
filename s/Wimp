@@ -19,6 +19,8 @@
 ;; Author:   Neil Raine
 ;;-----------------------------------------------------------------------------
 
+        AREA    |Asm$$Code|, CODE, READONLY
+
 Module_BaseAddr
 
         GET     Hdr:ListOpts
