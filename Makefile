@@ -88,7 +88,7 @@ resources-: resources_common
 	print Resources.${LOCALE}.CmdHelp { >> ${RESDIR}.${COMPONENT}.Messages }
 
 ${TARGET}: ${SOURCE}
-	${AS} ${ASFLAGS} ${SOURCE} ${THROWBACK}
+	${AS} ${ASFLAGS} ${SOURCE}
 
 ${EXP_HDR}.Wimp: hdr.Wimp
 	${CP} hdr.Wimp $@ ${CPFLAGS}
