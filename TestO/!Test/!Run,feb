@@ -12,3 +12,10 @@
 | See the License for the specific language governing permissions and
 | limitations under the License.
 |
+RMEnsure SharedCLibrary 3.50 RMLoad System:Modules.Clib
+RMEnsure SharedCLibrary 3.50 Error You need Clib 3.50 or later
+
+*WimpSlot -min 64k -max 64k
+*IconSprites <Obey$Dir>.!Sprites
+*Set Test$Dir <Obey$Dir>
+*Run <Test$Dir>.!RunImage %*0

@@ -12,3 +12,9 @@
 | See the License for the specific language governing permissions and
 | limitations under the License.
 |
+| > !Run file for !MenuTree
+
+*IconSprites <Obey$Dir>.sprites
+WimpSlot -min 640k -max 640k
+
+Run <Obey$Dir>.!RunImage
