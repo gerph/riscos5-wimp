@@ -13,8 +13,10 @@
 ; limitations under the License.
 ;
 ;
-; Wimp options for a RISC OS 3.7x build of the Window Manager
+; Wimp options for a Morris4 build of the Window Manager
 ;
+
+module_postfix	SETS	" Morris4"
 
  	ASSERT	International_Help <> 0
 
