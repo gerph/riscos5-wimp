@@ -2237,10 +2237,10 @@ starterrorbox_draw
 01
 ;
         MOV     R3,#?errortitle
-        ADR     R2,errortitle           ; -> title string for dialogue box
+        ADRL    R2,errortitle           ; -> title string for dialogue box
         BL      LookupToken
 ;
-        ADR     R2,errortitle
+        ADRL    R2,errortitle
 ;
 	DebugS	err,"errortitle=",R2
 
