@@ -513,14 +513,14 @@ repollwimp
         TSTNE   R14, #PortableFeature_Idle      ; and Portable_Idle works
         SWINE   XPortable_Idle                  ; then go dormant until next interrupt or centi-second tick
  ]
-        MOV     R0,#1
-        BL      scanpollwords           ; scan high-priority tasks
-        BNE     ExitPoll
-
         LDR     R14,taskhandle          ; get userblk back (may be corrupted)
         LDR     R14,[wsptr,R14]
         LDR     userblk,[R14,#task_registers+4*1]
 ;
+        MOV     R0,#1
+        BL      scanpollwords           ; scan high-priority tasks
+        BNE     ExitPoll
+
         LDR     R2,headpointer          ; are there any outstanding messages?
         CMP     R2,#nullptr
         BNE     returnmessage
