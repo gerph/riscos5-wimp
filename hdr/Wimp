@@ -223,6 +223,7 @@ WimpValidation_Display          * 'D'           ; Display char following for pas
 WimpValidation_Font             * 'F'           ; Select font foreground/background hex colours
 WimpValidation_Key              * 'K'           ; Allow wimp key processing
 WimpValidation_Line             * 'L'           ; Set line spacing in OS units
+WimpValidation_Name             * 'N'           ; Used by some template editors
 WimpValidation_Pointer          * 'P'           ; Set pointer from sprite name and active posn
 WimpValidation_Border           * 'R'           ; Border type
 WimpValidation_Sprite           * 'S'           ; Sprite name
