@@ -18,24 +18,27 @@ SWIWimp_TextOp
         MyEntry "TextOp"
 
         AND     userblk,R0,#255
-        TEQ     userblk,#0
-        TEQNE   userblk,#1
-        TEQNE   userblk,#2
-        SETV    NE
+        CMP     userblk,#4
+        SETV    HI
         ADRVSL  R0,ErrorBlock_WimpBadReasonCode
         BVS     ExitWimp
-        TEQ     userblk,#0
-        BLEQ    textop_setcolours
         [ AllowMatrix
         TST     R0,#&20000000
         MOVNE   R14,R6
         MOVEQ   R14,#0
-        STR     R14,validationstring
         ]
-        TEQ     userblk,#1
-        BLEQ    textop_gettextwidth
-        TEQ     userblk,#2
-        BLEQ    textop_painttext
+        CMP     userblk,#1
+        [ AllowMatrix
+        STRHS   R14,validationstring
+        ]
+        ADR     R14, %FT90
+        BLO     textop_setcolours
+        BEQ     textop_gettextwidth
+        CMP     userblk,#3
+        BLO     textop_painttext
+        BEQ     textop_getsplitpoint
+        BHI     textop_truncate
+90
         B       ExitWimp
 
 textop_setcolours
@@ -183,7 +186,7 @@ textop_gettextwidth
 
         MOV     R9,#bignum
         CMP     R2,#0
-        MOVHI   R9,R2
+        MOVGT   R9,R2
 
         [ outlinefont
         LDR     R3,systemfont
@@ -225,6 +228,254 @@ textop_sysfontwidth_loop
         BHI     textop_sysfontwidth_loop
         MOV     R0,R0, LSL #4
         Pull    "PC"
+
+
+textop_getsplitpoint
+        ; In:
+        ;  r1 -> string
+        ;  r2 = width, OS units
+        ;  r3 = split character
+        ; Out:
+        ;  r0 -> split point
+        Push    "lr"
+
+      [ outlinefont
+        Push    "r3"
+        LDR     r3,systemfont
+        TEQ     r3,#0
+        BEQ     textop_sysfontsplit
+
+        Push    "r1,r2"
+        MOV     r9,#bignum
+      [ CnP
+        MOV     r7,#-1
+      ]
+        MOV     r2,r1
+        MOV     r1,#is_deleted
+        BL      pushfontstring
+
+        ADD     r3,r1,r7                ; point above stacked string
+        LDMIB   r3,{r1,r8}              ; retrieve original r2,r3
+        MOV     r2,#0
+        SWI     XFont_Converttopoints
+
+        MOV     r3,#0
+        MOV     r4,#0
+        MOV     r5,#0
+        MOV     r6,#0
+        Push    "r3-r6,r8"
+
+        MOV     r5,sp
+        MOV     r4,#0
+        MOV     r3,r1
+        MOV     r2,#1:SHL:5
+        ADD     r1,sp,#20
+        SWI     XFont_ScanString
+        ADD     sp,sp,#20
+
+        ASSERT  UTF8
+        MOV     r2,sp
+        MOV     r3,#0
+        MOV     r6,#bignum
+01      CMP     r2,r1
+        BHS     %FT03
+02      LDRB    r14,[r2]
+        TEQ     r14,#26                 ; font change?
+        ADDEQ   r2,r2,#2
+        BEQ     %BT01                   ; skip it if so
+        BL      skipcharR
+        CMP     r2,r1
+        ADDLS   r3,r3,#1
+        BLO     %BT02
+03      ; r3 = number of characters to split point
+        ADD     sp,sp,r7                ; junk pushed string
+        Pull    "r2"                    ; retrieve original r1
+        ADD     sp,sp,#8                ; junk original r2,r3
+        CMP     r3,#0
+        BEQ     %FT12
+11      BL      skipcharR
+        SUBS    r3,r3,#1
+        BNE     %BT11
+12      MOV     r0,r2
+        Pull    "pc"
+
+textop_sysfontsplit
+        Pull    "r3"
+      ]
+        ; Can't cope properly with Unicode system font until appropriate APIs are designed
+        MOV     r2,r2,LSR #4            ; r2 = width converted to 8-pixel-wide characters
+        MOV     r0,r1                   ; initialise last-seen split character
+        CMP     r2,#0
+        BEQ     %FT22
+        LDRB    r14,[r1],#1
+21      CMP     r14,#31                 ; if we've hit the terminator
+        SUBLS   r1,r1,#1                ;   then point r1 at the terminator
+        BLS     %FT22                   ;   and break from loop
+        LDRB    r14,[r1],#1             ; before looping (or not) to next character,
+        CMP     r14,#31                 ;   see if it's going to be
+        TEQLS   r14,r14                 ;   a terminator
+        TEQNE   r14,r3                  ;   or a split character
+        SUBEQ   r0,r1,#1                ;   and update last-seen split character if so
+        SUBS    r2,r2,#1
+        BNE     %BT21
+        SUB     r1,r1,#1
+22      CMP     r3,#-1                  ; if no split character
+        MOVEQ   r0,r1                   ; then just point after last character
+        Pull    "pc"
+
+
+textop_truncate
+        ; In:
+        ;  r1 -> string
+        ;  r2 -> output buffer
+        ;  r3 = buffer size
+        ;  r4 = max width, OS units
+        ; Out:
+        ;  r0 = size of buffer needed
+        Push    "r1-r4,lr"
+        MOV     r2,#0
+        BL      textop_gettextwidth
+        LDR     r4,[sp,#3*4]
+        CMP     r0,r4
+        BLS     %FT50
+
+        LDR     r14,ellipsiswidth
+        LDR     r1,[sp,#0*4]
+        SUB     r2,r4,r14
+        MOV     r3,#-1
+        BL      textop_getsplitpoint
+
+        Pull    "r1-r3"
+        ADD     sp,sp,#4
+        SUB     r4,r0,r1                ; r4 = length to copy from original string
+        LDRB    r14,ellipsis+1
+        TEQ     r14,#0
+        MOVEQ   r5,#1                   ; r5 = length of ellipsis
+        MOVNE   r5,#3
+        ADD     r0,r4,r5
+        ADD     r0,r0,#1
+
+        CMP     r3,#0
+        Pull    "pc", EQ
+11      LDRB    r14,[r1],#1
+        STRB    r14,[r2],#1             ; copy bytes from original string while buffer not full
+        SUB     r4,r4,#1
+        SUBS    r3,r3,#1
+        TEQNE   r4,#0
+        BNE     %BT11
+        CMP     r3,#0
+        Pull    "pc", EQ
+        ADR     r1,ellipsis
+12      LDRB    r14,[r1],#1
+        STRB    r14,[r2],#1
+        SUB     r5,r5,#1
+        SUBS    r3,r3,#1
+        TEQNE   r5,#0
+        BNE     %BT12
+        CMP     r3,#0
+        MOVNE   r14,#0
+        STRNEB  r14,[r2]
+        Pull    "pc"
+
+50      ; String already fitted in width specified - copy into buffer
+        Pull    "r1-r3"
+        ADD     sp,sp,#4
+        MOV     r4,#0
+51      LDRB    r14,[r1,r4]
+        ADD     r4,r4,#1                ; count bytes up to and including terminator
+        CMP     r14,#' '
+        BHS     %BT51
+        ; Now r4 = buffer needed
+        MOV     r0,r4
+        CMP     r3,r4
+        MOVHS   r3,r4
+        CMP     r3,#0
+        Pull    "pc", EQ
+52      LDRB    r14,[r1],#1
+        STRB    r14,[r2],#1             ; copy bytes including terminator, up to min (buffer size, string length)
+        SUBS    r3,r3,#1
+        BNE     %BT52
+        Pull    "pc"
+
+
+measure_ellipsis ; called from FindFont, sets things up for textop_truncate
+        Entry   "r0-r5"
+        BL      read_current_alphabet
+        LDREQ   r0,=&A680E2             ; lookup not appropriate for UTF-8 - use &E2 &80 &A6
+        BEQ     %FT05
+
+        MOV     r1,#Service_International
+        MOV     r2,#8 ; Inter_UCSTable
+        LDRB    r3,alphabet
+        SWI     XOS_ServiceCall
+        TEQ     r1,#0                   ; not recognised? (or maybe old International module?)
+        LDRNE   r0,=&2E2E2E             ; use "..." if so
+        BNE     %FT05
+
+        ADD     r4,r4,#&80*4            ; skip first &80 characters, unlikely to be ellipsis
+        MOV     r3,#&80
+        LDR     lr,=&2026               ; UCS-4 ellipsis is &2026
+01      LDR     r0,[r4],#4
+        TEQ     r0,lr
+        SUBNES  r3,r3,#1
+        BNE     %BT01
+        TEQ     r3,#0
+        LDREQ   r0,=&2E2E2E             ; use "..." if not in alphabet
+        RSBNE   r0,r3,#&100             ; else use appropriate character
+
+05      STR     r0,ellipsis
+
+      [ outlinefont
+        LDR     r0,systemfont
+        TEQ     r0,#0
+        BEQ     %FT50
+
+10      SUB     sp,sp,#16
+        MOV     r1,#0
+        MOV     r2,#0
+        MOV     r3,#0
+        MOV     r4,#0
+        MOV     r5,#-1
+        Push    "r1-r5"
+        ADR     r1,ellipsis
+        LDR     r2,=1:SHL:18 :OR: 1:SHL:8 :OR: 1:SHL:5
+        MOV     r3,#bignum/16
+        MOV     r4,#bignum/16
+        MOV     r5,sp
+        SWI     XFont_ScanString
+        ADD     sp,sp,#20
+        Pull    "r1-r2,r5,r14"          ; get bounding box
+        CMP     r5,r1
+        CMPLE   r14,r2                  ; if bounding box has zero or negative width and height
+        TEQLE   r3,#0
+        TEQEQ   r4,#0                   ;   and offsets are both zero
+        LDREQ   r0,=&2E2E2E             ;   then consider character to be undefined, so use "..."
+        LDR     r14,ellipsis
+        MOVNE   r0,r14
+        TEQ     r0,r14                  ; if we've just changed to "..." then measure "..." instead
+        STRNE   r0,ellipsis
+        LDRNE   r0,systemfont
+        BNE     %BT10
+
+        LDR     r1,dx
+        MOV     r2,#0
+        SWI     XFont_Converttopoints
+        SUB     r1,r1,#1
+        ADD     r3,r3,r1
+        BIC     r1,r3,r1                ; round up to next whole number of pixels (cos ConverttoOS will round down)
+        SWI     XFont_ConverttoOS
+
+        STR     r1,ellipsiswidth
+        EXIT
+50
+      ]
+        LDR     r0,ellipsis
+        CMP     r0,#&100
+        MOVHS   r0,#48
+        MOVLO   r0,#16
+        STR     r0,ellipsiswidth
+        EXIT
+
 
 SWIWimp_ResizeIcon
         MyEntry "ResizeIcon"

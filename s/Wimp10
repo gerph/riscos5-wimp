@@ -2906,6 +2906,8 @@ afterfindingfont
         Pull    "R11"
       ]
 
+        BL     measure_ellipsis         ; and work out what it is in this alphabet
+
         [ true
 ; now resize iconbar icons
         MOV     R2,#1

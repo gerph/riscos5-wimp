@@ -6906,6 +6906,7 @@ getpalpointer ROUT
 ;       R2 -> string to paint
 ;       R3 = handle for icon font
 ;       R7 -> control sequence list (-1 indicates no list)
+;       R9 = number of characters to include, iff is_deleted is set in R1
 ; out   R1 -> string to use
 ;       R7 = difference in stack (*word aligned*)
 ;       all others preserved

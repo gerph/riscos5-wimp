@@ -1167,6 +1167,9 @@ systemfontwidth #       4
 systemfonty0    #       4
 systemfonty1    #       4
 
+ellipsiswidth   #       4
+ellipsis        #       4
+
 tempiconblk     #       48              ; for creating icons for menus
                                         ; also used for int_open_window
                                         ; and system drag boxes
