@@ -2779,7 +2779,7 @@ clearstack
         LDR     R0, linecount
         Debug   err, "Error message icon line count =", R0
         CMP     R0, #errmess_maxlines
-        BLS     %FT01                           ; satisfactory number of lines, we don't need to stretch any further
+        BLE     %FT01                           ; satisfactory number of lines, we don't need to stretch any further
         LDR     R2, [sp, #1*4]                  ; R2 -> text icon definition
         LDR     R3, [R2, #i_bbx0]
         SUB     R3, R3, #errmess_increment      ; enlarge window by one step
