@@ -41,10 +41,11 @@ getborder EntryS "R2,R4-R5"
         TSTNE   R1,#if_indirected
         BEQ     %FT11                   ; if not indirected + text then ignore
 ;
-        CMP     R3,#1                   ; is there a validation specified?
-        MOVGE   R2,#WimpValidation_Border
-        BLGE    findcommand
-        BNE     %10                     ; if not present / valid then skip
+        CMP     R3,R3,ASR #31           ; is there a validation specified?
+        BEQ     %10                     ; if not valid then skip
+        MOV     R2,#WimpValidation_Border
+        BL      findcommand
+        BNE     %10                     ; if not present then skip
 ;
         BL      getnumber               ; get the border number
         MOV     R4,R0                   ; Defaults to zero
@@ -654,8 +655,8 @@ maketoollist EntryS "R1-R11"
         BEQ     %FT07                   ; the list exists and we succeded
 03
         LDR     R14,list_at
-        CMP     R14,#0
-        BGT     %FT05                   ; the list exists, but the search failed
+        CMP     R14,R14,ASR #31
+        BNE     %FT05                   ; the list exists, but the search failed
         MOV     R14,#1
         STRB    R14,spritecachevalid    ; list doesn't exist
         LDR     R14,thisCBptr
@@ -730,8 +731,11 @@ maketoollist EntryS "R1-R11"
 ;
       [ TrueIcon3
         ; If these are the ROM toolsprites, assume all tools are unmasked
-        CMP     R1, #ROMstart
-        BGE     %FT66
+        LDR     R0,ROMstart
+        LDR     R14,ROMend
+        CMP     R1,R0
+        CMPHS   R14,R1
+        BHS     %FT66
       ]
 ;
 	TEQ	R5,#1
@@ -869,9 +873,12 @@ maketoollist EntryS "R1-R11"
         LDR     R0,=&200+SpriteReason_PutSpriteScaled
       [ TrueIcon3
         LDR     R1, tool_area
-        CMP     R1, #ROMstart
-        MOVGE   R1, #0                  ; pretend ROM toolsprites are unmasked
-        MOVLT   R1, #8
+        LDR     R2, ROMstart
+        LDR     R3, ROMend
+        CMP     R1, R2
+        CMPHS   R3, R1
+        MOVHS   R1, #0                  ; pretend ROM toolsprites are unmasked
+        MOVLO   R1, #8
       |
         MOV     R1,#8
       ]
@@ -1090,12 +1097,16 @@ freetoolarea EntryS "R1-R4"
 ;
         LDR     R2,tool_area
         CMP     R2,#0                   ; is there a tools area already?
+        BNE     %FT01
 
-        RSBGTS  R14,R2,#ROMstart        ; it may have started life in ROM
+        LDR     R14,ROMstart            ; it may have started life in ROM
+        LDR     R4,ROMend
+        CMP     R2,R14
+        CMPHS   R4,R2
 
-        BLGT    XROS_Module             ; attempt to free the buffer (ignore errors)
+        BLLO    XROS_Module             ; attempt to free the buffer (ignore errors)
 ;
-        MOV     R0,#0
+01      MOV     R0,#0
         STR     R0,tool_area            ; flag as being released
 ;
         BL      freetoollist            ; release the tool list (used for finding the sprites)
@@ -3113,8 +3124,8 @@ recache_tools_trans2
         ; the the standard pixtable variables in order to invoke cachespritedata
         LDR     R2,pixtable_at
         CMP     R2,#0
-        MOVGT   R0,#ModHandReason_Free
-        BLGT    XROS_Module
+        MOVNE   R0,#ModHandReason_Free
+        BLNE    XROS_Module
 
         LDR     R2,tool_transtable      ; reuse tool_transtable memory area
         STR     R2,pixtable_at

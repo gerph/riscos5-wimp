@@ -181,11 +181,11 @@ setwindowptrs
         Push    "LR"
 ;
         LDR     R14,caretdata+0
-        CMP     R14,#0
-        Abs     R14,R14,GT
-        LDRGT   R14,[R14,#w_icons]              ; R14 --> start of icon list   (NK 339)
-        LDRGT   R0,caretdata+4
-        ADDGT   R14,R14,R0,LSL #i_shift
+        CMP     R14,#nullptr
+        Abs     R14,R14,NE
+        LDRNE   R14,[R14,#w_icons]              ; R14 --> start of icon list   (NK 339)
+        LDRNE   R0,caretdata+4
+        ADDNE   R14,R14,R0,LSL #i_shift
         STR     R14,careticonaddr               ; R14 --> addr of caret icon
 ;
         ADD     R14,handle,#w_wax0
@@ -382,10 +382,11 @@ int_seticonptrs ROUT
 ; check for line spacing
 ;
         Push    "R2,R3"
-        CMP     R3,#1
-        BLGE    pageiniconbartask
-        MOVGE   R2,#WimpValidation_Line
-        BLGE    findcommand
+        CMP     R3,R3,ASR #31
+        BEQ     %FT01
+        BL      pageiniconbartask
+        MOV     R2,#WimpValidation_Line
+        BL      findcommand
         BNE     %FT01
 ;
         MOV     R2,#40
@@ -412,27 +413,28 @@ int_seticonptrs ROUT
         BEQ     %FT01
 
         Push    "R2,R3"
-        CMP     R3,#1
-        BLGE    pageiniconbartask       ; we need to access the task's data
-        MOVGE   R2,#WimpValidation_Font
-        BLGE    findcommand
+        CMP     R3,R3,ASR #31
+        BEQ     %FT11
+        BL      pageiniconbartask       ; we need to access the task's data
+        MOV     R2,#WimpValidation_Font
+        BL      findcommand
         BNE     %FT11
 ;
         LDRB    R2, [R3], #1
       [ true ; slightly more robust (if less elegant) code: copes with incomplete/invalid specifier (eg "F0", "F9x" or even just "F")
         CMP     R2, #' '
-        BLT     %FT11                   ; stop if terminated
+        BLO     %FT11                   ; stop if terminated
         ORR     R2, R2, #&20
         CMP     R2, #'0'
-        BLT     %FT11
+        BLO     %FT11
         CMP     R2, #'9'
-        SUBLE   R2, R2, #'0'
-        BLE     %FT05
+        SUBLS   R2, R2, #'0'
+        BLS     %FT05
         CMP     R2, #'a'
-        BLT     %FT11
+        BLO     %FT11
         CMP     R2, #'f'
-        SUBLE   R2, R2, #'a'-10
-        BGT     %FT11
+        SUBLS   R2, R2, #'a'-10
+        BHI     %FT11
 05
       |
         ASCII_UpperCase R2,R14
@@ -444,18 +446,18 @@ int_seticonptrs ROUT
         LDRB    R2,[R3]
       [ true ; slightly more robust (if less elegant) code: copes with incomplete/invalid specifier (eg "F0", "F9x" or even just "F")
         CMP     R2, #' '
-        BLT     %FT11                   ; stop if terminated
+        BLO     %FT11                   ; stop if terminated
         ORR     R2, R2, #&20
         CMP     R2, #'0'
-        BLT     %FT11
+        BLO     %FT11
         CMP     R2, #'9'
-        SUBLE   R2, R2, #'0'
-        BLE     %FT05
+        SUBLS   R2, R2, #'0'
+        BLS     %FT05
         CMP     R2, #'a'
-        BLT     %FT11
+        BLO     %FT11
         CMP     R2, #'f'
-        SUBLE   R2, R2, #'a'-10
-        BGT     %FT11
+        SUBLS   R2, R2, #'a'-10
+        BHI     %FT11
 05
       |
         ASCII_UpperCase R2,R14
@@ -472,9 +474,9 @@ int_seticonptrs ROUT
 ;
         Push    "R0,R3"
 ;
-        CMP     R3,#1
-        BLGE    pageiniconbartask
-        BLGE    getborder               ; attempt to define the border string
+        CMP     R3,R3,ASR #31
+        BLNE    pageiniconbartask
+        BLNE    getborder               ; attempt to define the border string
 ;
         Pull    "R0,R3"
 
@@ -493,10 +495,11 @@ int_seticonptrs ROUT
 ; check for a 24-bit colour specifier
 ;
         Push    "R2,R3"
-        CMP     R3,#1
-        BLGE    pageiniconbartask
-        MOVGE   R2,#WimpValidation_Colour
-        BLGE    findcommand
+        CMP     R3,R3,ASR #31
+        BEQ     %FT14
+        BL      pageiniconbartask
+        MOV     R2,#WimpValidation_Colour
+        BL      findcommand
         BNE     %FT14
         Push    "R0,R1"
 ;
@@ -596,11 +599,11 @@ int_seticonptrs ROUT
       ]
         Pull    "R3,R10,PC",EQ          ; finished unless Sprite+Text
 ;
-        CMP     R3,#0                   ; no validation string?
+        CMP     R3,R3,ASR #31           ; no validation string?
       [ TrueIcon2
-        BLLE    mungetruecolours
+        BLEQ    mungetruecolours
       ]
-        Pull    "R3,R10,PC",LE
+        Pull    "R3,R10,PC",EQ
 
 ;
 ; process validation string for sprite+text icon
@@ -642,10 +645,11 @@ readtruecolours ROUT
         ;      [truetitlefg],  [truetitlebg],  [trueworkfg],    [trueworkbg],     [truescoutcolour], [truescincolour], [truetitlebg2]
         ;      may each be modified according to validation string
         Entry   "R0,R2,R3"
-        CMP     R3,#1
-        BLGE    pageiniconbartask
-        MOVGE   R2,#WimpValidation_Colour
-        BLGE    findcommand
+        CMP     R3,R3,ASR #31
+        BEQ     %FT14
+        BL      pageiniconbartask
+        MOV     R2,#WimpValidation_Colour
+        BL      findcommand
         BNE     %FT14
         Push    "R0,R1"
         MOV     R1, R3
@@ -1046,8 +1050,8 @@ pageinicontask
         BL      checkhandle
         BVS     piit_x1
 ;
-        CMP     R0,#0                   ; is it system window?
-        BLT     %FT01
+        CMP     R0,#nullptr             ; is it system window?
+        BEQ     %FT01
 ;
         CMP     R1,#0
         BLT     %FT01                   ; or a system icon?
@@ -1508,9 +1512,9 @@ findeorvalues
         EOR     R1,R0,R1                                ;C(bg)+C(bg+ib)
         STR     R1,[R3,R5, LSL #2]
         SUBS    R5,R5,#1
-        BGE     %BT10
+        BPL     %BT10
         SUBS    R4,R4,#1
-        BGE     %BT05
+        BPL     %BT05
 
         Pull    "R0-R5,PC"
 
@@ -1644,8 +1648,8 @@ icontext TraceL font
         Push    "R1-R4,LR"
 
         LDR     R14,linespacing         ; is this a formatted icon?
-        CMP     R14,#0
-        BGE     iconformatted
+        CMP     R14,#-1
+        BNE     iconformatted
 ;
         Push    "R3,x0-y1"
         LDR     R3,validationstring
@@ -1922,12 +1926,14 @@ writedirreverse_len * .-writedirreverse
         Push    "R2"
         MOV     R4,#0                   ; no char to print as
         LDR     R3,validationstring
-        CMP     R3,#1                   ; R3 <= 0 ==> no validation string
-        MOVGE   R2,#WimpValidation_Display
-        BLGE    findcommand
+        CMP     R3,R3,ASR #31           ; R3 = 0/-1 ==> no validation string
+        BEQ     %FT96
+        MOV     R2,#WimpValidation_Display
+        BL      findcommand
         LDREQB  R4,[R3],#1
         TEQEQ   R4,#"\\"
         LDREQB  R4,[R3]
+96
         Pull    "R2"
 
         TST     R1,#if_indirected       ; limit 12 chars unless indirected
@@ -2945,10 +2951,10 @@ SWIWimp_ReadPixTrans
         MyEntry "ReadPixTrans"
 
         CMP     R0,#&100
-        MOVLT   R1,#0                   ; use system area if R0 < &100
+        MOVLO   R1,#0                   ; use system area if R0 < &100
         MOV     R14,#0
         CMP     R0,#&200
-        MOVLT   R14,#1                  ; lengthflags ==> is R2 a name/sprite?
+        MOVLO   R14,#1                  ; lengthflags ==> is R2 a name/sprite?
         STR     R14,lengthflags
         STR     R1,thisCBptr            ; used by cachespritedata
         STR     R2,spritename           ; used by cachespritedata
@@ -2956,14 +2962,14 @@ SWIWimp_ReadPixTrans
         BVS     ExitWimp
 ;
         CMP     R6,#0
-        ADRGT   R14,factors
-        LDMGTIA R14,{R1-R4}
-        STMGTIA R6,{R1-R4}              ; copy factors out
+        ADRNE   R14,factors
+        LDMNEIA R14,{R1-R4}
+        STMNEIA R6,{R1-R4}              ; copy factors out
 ;
         CMP     R7,#0
-        LDRGT   R14,pixtable_at
-        LDMGTIA R14,{R1-R4}
-        STMGTIA R7,{R1-R4}              ; copy pixtrans out (NB word-aligned)
+        LDRNE   R14,pixtable_at
+        LDMNEIA R14,{R1-R4}
+        STMNEIA R7,{R1-R4}              ; copy pixtrans out (NB word-aligned)
 ;
         B       ExitWimp
 
@@ -2998,7 +3004,7 @@ cachespritedata
         LDR     R7,[R2,#spImage]
         LDR     R14,[R2,#spTrans]
         CMP     R7,R14                  ; min(image,trans)
-        MOVGT   R7,R14
+        MOVHI   R7,R14
 
         LDR     R14,pixtable_at
         CMP     R14,#0                  ; is a pixtable defined?
@@ -3096,7 +3102,6 @@ cachespritedata
         ADR     R14,factors
         STMIA   R14,{R0-R1,R5-R6}       ; store the scaling block
 
-        MOV     R0,#&8000
         Pull    "R1"                    ; R1 -> sprite
         MOV     R2,#-1
         MOV     R3,#-1                  ; convert to the current mode
@@ -3141,8 +3146,8 @@ cachespritedata
 ; same depth, no palette so no trans table
         LDR     R2,pixtable_at
         CMP     R2,#0                   ; is there a pixel table defined yet?
-        MOVGT   R0,#ModHandReason_Free
-        BLGT   XROS_Module              ; free it if there is - ignoring errors
+        MOVNE   R0,#ModHandReason_Free
+        BLNE   XROS_Module              ; free it if there is - ignoring errors
 
         MOV     R2,#0
         STR     R2,pixtable_at          ; mark as the pix table has been released
@@ -3169,7 +3174,7 @@ cachespritedata
         BIC     R3,R3,#&000000FF        ; R3 = &BBGGRR00
         STR     R3,[R1,R5,LSL #2]
         SUBS    R5,R5,#1
-        BGE     %BT05                   ; loop back copying the data
+        BPL     %BT05                   ; loop back copying the data
 
         Pull    "R0-R3,R5"
 
@@ -3181,14 +3186,14 @@ cachespritedata
         TEQ     R14,#0                  ; does the pixtable exist?
         LDRNE   R14,pixtable_size
         CMP     R14,R4                  ; is it big enough?
-        BGE     %FT20
+        BHS     %FT20
 
         Push    "R0-R3"
 
         LDR     R2,pixtable_at
         CMP     R2,#0                   ; is there a pixel table defined yet?
-        MOVGT   R0,#ModHandReason_Free
-        BLGT    XROS_Module              ; free it if there is - ignoring errors
+        MOVNE   R0,#ModHandReason_Free
+        BLNE    XROS_Module              ; free it if there is - ignoring errors
 
         MOV     R2,#0
         STR     R2,pixtable_at          ; mark as the pix table has been released
@@ -3281,15 +3286,16 @@ cachespriteaddress ROUT
         BNE     %FT20
 
         LDR     R0,list_at
-        CMP     R0,#0                   ; is there a list allocated?
-        BLT     %FT15                   ; no, its flagged as invalid
+        CMP     R0,#nullptr             ; is there a list allocated?
+        BEQ     %FT15                   ; no, its flagged as invalid
 
+        CMP     R0,#0
         BNE     %FT13
         BL      makespritelist
         LDR     R0,list_at              ; resolve pointer
 13
-        CMP     R0,#0
-        BLT     %FT15                   ; if not valid still then return
+        CMP     R0,#nullptr
+        BEQ     %FT15                   ; if not valid still then return
 
         BL      getspriteaddr
         STRVC   R2,spritename           ; store as pointer to the sprite
@@ -3656,7 +3662,7 @@ wimp_SpriteOp
         LDR     R1,thisCBptr            ; version for this sprite
         LDR     R2,spritename           ; ditto
         CMP     R1,#1                   ; 0 ==> use system sprite pool
-        ORRGE   R0,R0,#&100             ; 1 ==> use common sprite pool
+        ORRHS   R0,R0,#&100             ; 1 ==> use common sprite pool
         BNE     %FT01
 11
       [ SpritePriority
@@ -3702,8 +3708,8 @@ do_spriteop
       ]
         LDR     R14,lengthflags
         CMP     R14,#0                  ; if length 0, then R2 --> sprite
-        ANDLE   R0,R0,#&0FF
-        ORRLE   R0,R0,#&200
+        ANDEQ   R0,R0,#&0FF
+        ORREQ   R0,R0,#&200
         SWI     XOS_SpriteOp
         Pull    "PC"
 
@@ -4179,7 +4185,7 @@ yesdrag
 ;
         LDR     R14,dragtype            ; Leading edge
         CMP     R14,#drag_subr_posn
-        BLT     yesdr1
+        BLO     yesdr1
         B       yesdrplot               ; Do a plot the first time round (NOT A MOVE !)
 01
         CMP     x0,cx0                  ; Dragbox continuing
@@ -4192,9 +4198,10 @@ yesdr1
         LDR     R14,dragtype            ; Dragbox moving
         CMP     R14,#drag_scrollboth
         CMPNE   R14,#drag_subr_posn-1
-        LDRGT   R14,dragsubr_move       ; does it have a move routine?
-        CMPGT   R14,#1
-        BLE     %FT01
+        BHI     %FT01
+        LDR     R14,dragsubr_move       ; does it have a move routine?
+        CMP     R14,R14,ASR #31
+        BEQ     %FT01
 ;
         ; Plot to translate/resize box - dashes don't rotate here
       [ Autoscr
@@ -4542,14 +4549,14 @@ dottedbox
 
         CMP     R14,#drag_scrollboth
         CMPNE   R14,#drag_subr_posn-1
-        BGT     callsubr
+        BHI     callsubr
 ;
         Debug   ub,"Normal drag",R14
 
       [ true
         ; make sure OS coordinates don't overflow
         MOV     R14, #&7F00 ; max
-        RSB     R0, R14, #0 ; min
+        LDR     R0, =-&8000 ; min
         CMP     x0, R14
         MOVGT   x0, R14
         CMP     x0, R0
@@ -4615,19 +4622,18 @@ callsubr
         LDRB    R8,dragaction           ; dragaction = offset from dragwsptr
         ADR     R14,dragwsptr
         LDR     R8,[R14,R8]
-        CMP     R8,#0                   ; if null routine, don't call it
+        CMP     R8,R8,ASR #31           ; if null routine, don't call it
       [ Autoscr
         ADD     R0, sp, #4*4    ; skip cx0 - cy1 on stack
         LDMIA   R0,{R0-R3}      ; ALWAYS LOAD THESE !!!
       |
         LDMIA   sp,{R0-R3}      ; ALWAYS LOAD THESE !!!
       ]
-        ADRGT   R14,dragx0
-        LDMGTIA R14,{R4-R7}
-        LDRGT   R12,dragwsptr           ; get appropriate workspace pointer
-        ADRGT   R14,returnaddress + SVC_mode
-        MOVGT   PC,R8
-returnaddress
+        ADRNE   R14,dragx0
+        LDMNEIA R14,{R4-R7}
+        LDRNE   R12,dragwsptr           ; get appropriate workspace pointer
+        MOVNE   R14,PC
+        MOVNE   PC,R8
       [ Autoscr
         ADD     R14, sp, #4*4   ; skip cx0 - cy1 on stack
         STMIA   R14,{R0-R3}             ; may have been modified
@@ -4881,8 +4887,9 @@ SWIWimp_SetIconState
         MyEntry "SetIconState"
 ;
         LDR     handle,[userblk]
-        CMP     handle,#0
-        LDRLT   handle,iconbarhandle    ; allow access to icon bar
+        CMP     handle,#nullptr
+        CMPNE   handle,#-2
+        LDREQ   handle,iconbarhandle    ; allow access to icon bar
         BL      checkhandle
         BVS     ExitWimp
         ADD     R14,userblk,#4
@@ -4965,8 +4972,9 @@ SWIWimp_GetIconState
         MyEntry "GetIconState"
 ;
         LDR     handle,[userblk]
-        CMP     handle,#0
-        LDRLT   handle,iconbarhandle    ; allow access to icon bar
+        CMP     handle,#nullptr
+        CMPNE   handle,#-2
+        LDREQ   handle,iconbarhandle    ; allow access to icon bar
         BL      checkhandle
         BVS     ExitWimp
         LDR     R0,[userblk,#4]         ; icon handle
@@ -5027,9 +5035,9 @@ int_which_icon
         MOV     R7,userblk
 whiclp
         CMP     R4,R6
-        BGE     endwhlp
-        CMP     R0,#0                   ; if iconbar,
-        BGE     %FT01                   ; check that the task owns this icon
+        BHS     endwhlp
+        CMP     R0,#nullptr             ; if iconbar,
+        BNE     %FT01                   ; check that the task owns this icon
         Push    "R1,R2,R7"
         BL      findicon                ; R2 -> iconblock
         LDREQ   R14,[R2,#icb_taskhandle]
@@ -5055,7 +5063,7 @@ endwhlp
 ;;----------------------------------------------------------------------------
 ;; Routine to allow the user (and the Wimp!) to drag boxes
 ;; SWI Wimp_DragBox
-;; Entry:  R1 <=0 ==> just cancel current drag operation
+;; Entry:  R1 =0 or -1 ==> just cancel current drag operation
 ;;         R1 --> block
 ;;                +0  window handle (not used if dragtype >= 5)
 ;;                +4  drag type
@@ -5089,9 +5097,9 @@ dr_subr_move    #       4               ; if <=0, use undraw/draw sequence
 SWIWimp_DragBox
         MyEntry "DragBox"
 
-        CMP     userblk,#0
-        BLLE    nodragging              ; preserves flags
-        BLE     ExitWimp                ; <=0 ==> cancel current dragbox
+        CMP     userblk,userblk,ASR #31
+        BLEQ    nodragging              ; preserves flags
+        BEQ     ExitWimp                ; =0 or -1 ==> cancel current dragbox
 ;
       [ Autoscr
         LDR     R14, openidentifier2    ; watch out for extended API
@@ -5107,16 +5115,16 @@ SWIWimp_DragBox
 ;
         CMP     R0,#drag_scrollboth
         CMPNE   R0,#drag_subr_posn-1
-        ADDGT   R14,userblk,#dr_wsptr-8
-        LDMGTIA R14,{R1-R4}
-        ADRGT   R14,dragwsptr
-        STMGTIA R14,{R1-R4}
+        ADDHI   R14,userblk,#dr_wsptr-8
+        LDMHIIA R14,{R1-R4}
+        ADRHI   R14,dragwsptr
+        STMHIIA R14,{R1-R4}
 ;
       [ Autoscr
         RSBS    R14, R0, #drag_user
-        CMPLE   R0, #drag_scrollboth -1 ; LE => drag type is in range 5 through 11
+        CMPLS   R0, #drag_scrollboth -1 ; LS => drag type is in range 5 through 11
                                         ; so we need only validate the window handle if dragf_inwind is set
-        SETPSR  Z_bit, R14, LE          ; now NE => window drag, EQ => drag type 5-11
+        SETPSR  Z_bit, R14, LS          ; now NE => window drag, EQ => drag type 5-11
 
         LDREQ   R14, [sp]               ; get the new dragflags pushed above
         TSTEQ   R14, #dragf_anchor :OR: dragf_clip  ; window-relative bit(s) set => window handle needs validating
@@ -5204,12 +5212,12 @@ int_drag_box_continue                   ; treat mouse as being at last posn
 
         CMP     R0, #drag_scrollboth
         CMPNE   R0, #drag_user - 1
-        BICLE   R1, R1, #dragf_anchor :OR: dragf_clip  ; window-relative dragging is not applicable to window drags!
+        BICLS   R1, R1, #dragf_anchor :OR: dragf_clip  ; window-relative dragging is not applicable to window drags!
         STR     R1, dragflags           ; store new dragflags
 
         RSBS    R14, R0, #drag_user
-        CMPLE   R0, #drag_scrollboth -1
-        SETPSR  Z_bit, R14, LE          ; NE => window drag, EQ => drag type 5-11
+        CMPLS   R0, #drag_scrollboth -1
+        SETPSR  Z_bit, R14, LS          ; NE => window drag, EQ => drag type 5-11
         LDREQ   R14, dragflags
         TSTEQ   R14, #dragf_anchor :OR: dragf_clip  ; now NE => window handle is needed later
 
@@ -5223,12 +5231,12 @@ int_drag_box_continue                   ; treat mouse as being at last posn
       |
         CMP     R0,#drag_scrollboth
         CMPNE   R0,#drag_user-1
-        Rel     R14,handle,LE
-        MOVGT   R14,#0
+        Rel     R14,handle,LS
+        MOVHI   R14,#0
         STR     R14,draghandle          ; ensure handle=0 if not window drag
       ]
         LDRLE   R14,[handle,#w_taskhandle]  ; remember who started it!
-        LDRGT   R14,taskhandle              ; no window assoc. if user drag
+        LDRHI   R14,taskhandle              ; no window assoc. if user drag
         STR     R14,dragtask
 ;
         TEQ     R0,#drag_posn           ; if not moveable, can't drag posn/size
@@ -6467,13 +6475,16 @@ SWIWimp_SetColourMapping
 ;
         CMP     R2,#0                   ; use the default 1BPP mapping table
         ADREQL  R2,transtable1
-        ADRLT   R2,map1bpp
+        CMP     R2,#-1
+        ADREQ   R2,map1bpp
         CMP     R3,#0                   ; use the default 2BPP mapping table
         ADREQL  R3,transtable2
-        ADRLT   R3,map2bpp
+        CMP     R3,#-1
+        ADREQ   R3,map2bpp
         CMP     R4,#0                   ; use the default 4BPP mapping table
         ADREQL  R4,transtable4
-        ADRLT   R4,map4bpp
+        CMP     R4,#-1
+        ADREQ   R4,map4bpp
 ;
         ASSERT  ?transtable1= ?map1bpp
         ASSERT  ?transtable2= ?map2bpp
@@ -6604,7 +6615,7 @@ getpalpointer ROUT
 ; in    R1 = flags for icon
 ;       R2 -> string to paint
 ;       R3 = handle for icon font
-;       R7 -> control sequence list ( <= 0 indicates no list)
+;       R7 -> control sequence list (-1 indicates no list)
 ; out   R1 -> string to use
 ;       R7 = difference in stack (*word aligned*)
 ;       all others preserved
@@ -6650,8 +6661,8 @@ pushfontstring TraceL font
         TraceNL font
 
       [ CnP
-        CMP     R7, #0
-        ADRLEL  R7, null_control_sequence_list
+        CMP     R7, #nullptr
+        ADREQL  R7, null_control_sequence_list
         STR     R7, font_cs_list
       ]
 
@@ -6679,13 +6690,14 @@ pushfontstring TraceL font
         ;find the replacement character by looking at the validation string
         MOV     R10, #:CHR: 0
         LDR     R3, validationstring
-        CMP     R3, #1
+        CMP     R3, R3, ASR #31
+        BEQ     %FT01
         ;R3 <= 0 => no validation string
-        MOVGE   R2, #WimpValidation_Display
+        MOV     R2, #WimpValidation_Display
 ; R2 = WimpValidation_Display ('D')
 ; R3 -> validation string
 
-        BLGE    findcommand
+        BL      findcommand
       [ UTF8
         BLEQ    checkvalid_getchar
         TEQ     R10, #"\\"
@@ -6696,8 +6708,8 @@ pushfontstring TraceL font
         TEQEQ   R10, #"\\"
         LDREQB  R10, [R3]
       ]
-; R10 = replacement character
-
+; R10 = replacement character, or 0
+01
         MOV     R3, R7
 ; R3 = handle for icon font
 
@@ -6794,7 +6806,7 @@ pushfontstring_reinitialise_scan_loop
 
 pushfontstring_end_scan_loop
         CMP     R6, R9
-        BGE     pushfontstring_scan_loop_done
+        BHS     pushfontstring_scan_loop_done
       [ UTF8
         LDRB    R5, [R8, R6]                    ; get byte
         MOV     R4, #1
@@ -6811,7 +6823,7 @@ pushfontstring_end_scan_loop
       |
         LDRB    R5, [R8, R6]
         CMP     R5, #" "
-        BGE     pushfontstring_start_scan_loop
+        BHS     pushfontstring_start_scan_loop
       ]
 pushfontstring_scan_loop_done
 
@@ -6842,9 +6854,10 @@ pushfontstring_copy_string TraceL font
         [ AllowMatrix
         Push    "R2-R3"
         LDR     R3, validationstring
-        CMP     R3, #1
-        MOVGE   R2, #"M"
-        BLGE    findcommand
+        CMP     R3, R3, ASR #31
+        BEQ     %FT05
+        MOV     R2, #"M"
+        BL      findcommand
         BNE     %FT05
         LDRB    R14,[R3]
         Pull    "R2-R3"
@@ -6898,7 +6911,7 @@ pushfontstring_start_copy_loop
         STRB    R14, [R1, R0]
         ADD     R0, R0, #1
         SUBS    R10, R10, #1
-        BGT     %BT01
+        BNE     %BT01
         ADD     R9, R9, #3                      ; align, and store back in font_cs_list
         BIC     R9, R9, #3
         STR     R9, font_cs_list
@@ -7014,7 +7027,7 @@ pushfontstring_reinitialise_copy_loop
 
 pushfontstring_end_copy_loop
         CMP     R4, R6
-        BLT     pushfontstring_start_copy_loop
+        BLO     pushfontstring_start_copy_loop
 
 pushfontstring_copy_loop_done
         ;terminate the destination
@@ -7063,7 +7076,7 @@ pushfontstring_replacement_loop
         STRB    R14, [R1, R0]
         ADD     R0, R0, #1
         SUBS    R11, R11, #1
-        BGT     %BT01
+        BNE     %BT01
         ADD     R9, R9, #3              ; align
         BIC     R9, R9, #3
         LDR     R11, [R9, #0]
@@ -7116,7 +7129,7 @@ pushfontstring_scan_UTF8_string
         BEQ     %FT02                   ; break from loop if we've not advanced
         ADD     R0, R0, #1
         SUBS    R6, R7, R2              ; calculate number of bytes left
-        BGT     %BT01
+        BHI     %BT01
 02      ; R0 = number of characters
         SUB     sp, sp, #8              ; we need some scratch space - tempworkspace may already be in use
         MOV     R5, sp
@@ -7148,7 +7161,7 @@ pushfontstring_scan_UTF8_string
         STRB    R3, [R1], #1
         ; now put in characters:
 01      CMP     R2, R0                  ; finished?
-        BGE     %FT03
+        BPL     %FT03
       [ CnP
         LDR     R14, [R11, #0]          ; is there a control sequence at this character offset?
         TEQ     R2, R14
@@ -7158,7 +7171,7 @@ pushfontstring_scan_UTF8_string
 11      LDRB    R14, [R11], #1          ; copy control bytes
         STRB    R14, [R1], #1
         SUBS    R5, R5, #1
-        BGT     %BT11
+        BNE     %BT11
         ADD     R11, R11, #3            ; align
         BIC     R11, R11, #3
 12
@@ -7168,7 +7181,7 @@ pushfontstring_scan_UTF8_string
         STRB    R14, [R1], #1           ; copy across byte
         ADD     R5, R5, #1
         CMP     R5, R4
-        BLT     %BT02
+        BLO     %BT02
         ADD     R2, R2, #1              ; increment character count
         B       %BT01
 03      ADD     sp, sp, #8              ; realign stack
@@ -7385,7 +7398,7 @@ measure_symbols
         BICEQ   R11, R11, R14, LSL R8   ; if character is *not* defined, then clear its bit in R11 (=> test_arrow returns EQ)
         ADD     R8, R8, #1
         CMP     R8, #6                  ; six characters in the table
-        BLT     %BT01
+        BLO     %BT01
         EXIT
 
 ; Compare a UCS-4 character against the WimpSymbol mapping bitmap, to see if it needs to be mapped
@@ -7399,7 +7412,7 @@ test_arrow
       [ RegisterWIMPSymbolFont
         Push    "LR"
         CMP     R9, #&80
-        Pull    "PC", LT                ; optimisation for ASCII: return NE
+        Pull    "PC", LO                ; optimisation for ASCII: return NE
         Push    "R0,R1"
         TEQ     R2, #ISOAlphabet_UTF8
         ADRNE   R0, wimpsymbols

@@ -74,9 +74,9 @@ SWIWimp_SlotSize  ROUT
 ;
         MOV     R2,R1                   ; R2 = proposed slot size
         SWI     XOS_ReadMemMapInfo
-        CMP     R2,#0                   ; if -ve, just read current value
-        LDRLT   R3,slotsize
-        BLT     %FT01
+        CMP     R2,#-1                  ; if -ve, just read current value
+        LDREQ   R3,slotsize
+        BEQ     %FT01
         ADD     R2,R2,R0                ; R2 = (R2+size-1) DIV size * size
         SUB     R2,R2,#1
         DivRem  R3,R2,R0, R14
@@ -102,7 +102,7 @@ SWIWimp_SlotSize  ROUT
 ; on exit R0 = actual current slot size (whether or not memory could be moved)
 ;
         CMP     R4,#-1                  ; R4 = proposed new current slot size
-        BLE     returnmemsize           ; done if just reading
+        BEQ     returnmemsize           ; done if just reading
 
         MOV     R0,#ApplicationSpaceSize
         MOV     R1,#0
@@ -127,8 +127,8 @@ SWIWimp_SlotSize  ROUT
         BNE     returnmemsize           ; no current task (?)
 ;
         LDR     R2,[R5,#task_slotptr]   ; R2 --> slot (if any)
-        CMP     R2,#0
-        BLLE    getnullslot
+        CMP     R2,#nullptr
+        BLEQ    getnullslot
         STRVC   R2,[R5,#task_slotptr]   ; R2 --> slot
         BVS     ExitWimp                ; exit if unable to claim block
 
@@ -766,7 +766,7 @@ findfreepool    ROUT
         CMP     R1,R3
         STMHSIA R2!,{R0,R1,R14}         ; page no, address, access (undefined)
         ADDHS   R4,R4,#1
-        BGE     %BT01
+        BHS     %BT01
         STR     R4,freepoolpages
         MOV     R14,#-1
         STR     R14,[R2]                ; terminator
@@ -819,7 +819,14 @@ testapplication ROUT
 ;
   Debug mjs3,"testapplication routine issueing Service_Memory"
         MOV     R1,#Service_Memory
+      [ true
         MOV     R0,#IsAnybodyThere      ; 64 megabytes should be enough!
+      |
+        ; Oh no it isn't!
+        TEQ     PC,PC                   ; don't want yet another build option if we can avoid it
+        MOVNE   R0,#IsAnybodyThere      ; on 26-bit machines, use 64 megs for compatibility
+        MOVEQ   R0,#1:SHL:31            ; on 32-bit machines, use most negative possible number
+      ]
         SWI     XOS_ServiceCall
         CMPVC   R1,#1                   ; CC ==> service was claimed
 ;
@@ -859,8 +866,8 @@ restorepages    ROUT
         Pull    "R1-R7,PC"
 ;                                       ; just add to the pages present
         LDR     R6,freepool
-        CMP     R6,#0
-        BLE     go_restorememlimit      ; NB: orig_ values MUST BE CORRECT!
+        CMP     R6,#nullptr2
+        BHS     go_restorememlimit      ; NB: orig_ values MUST BE CORRECT!
 ;
         MOV     R0,#MemoryLimit
         MOV     R1,#0
@@ -996,10 +1003,10 @@ deallocateslot  ROUT
         LDR     R1,[wsptr,R14]          ; R1 --> task block
         LDR     R2,[R1,#task_slotptr]
 
-        CMP     R2,#0
-        MOVGT   R14,#nullptr
-        STRGT   R14,[R1,#task_slotptr]
-        BLE     %FT03
+        CMP     R2,#nullptr
+        MOVNE   R14,#nullptr
+        STRNE   R14,[R1,#task_slotptr]
+        BEQ     %FT03
 
         MOV     R0,#1       ;deallocpages reason code
         SWI     XOS_AMBControl
@@ -1014,8 +1021,8 @@ deallocateslot  ROUT
 ;
 deallocate      ROUT
         Push    "R0,LR"
-        CMP     R2,#0
-        Pull    "R0,PC",LE              ;return if invalid slot pointer
+        CMP     R2,#nullptr
+        Pull    "R0,PC",EQ              ;return if invalid slot pointer
 
    Debug mjs2,"deallocate"
 
@@ -1024,46 +1031,46 @@ deallocate      ROUT
         STRVS   R0,[SP]
         Pull    "R0,PC"
 
+;;
+;; Entry:  R2 --> slot block
+;; Exit:   pages mapped to base of free pool
+;;         page numbers put into free pool (lowest page last)
+;;         [freepoolbase] updated
+;;
 ;
-; Entry:  R2 --> slot block
-; Exit:   pages mapped to base of free pool
-;         page numbers put into free pool (lowest page last)
-;         [freepoolbase] updated
+;maptofreepool   ROUT
+;        Push    "R1-R7,LR"
+;;
+;        CMP     R2,#nullptr
+;        Pull    "R1-R7,PC",EQ           ; no block!
+;;
 ;
-
-maptofreepool   ROUT
-        Push    "R1-R7,LR"
+;        LDR     R6,freepool
+;        LDR     R7,freepoolpages        ; R7 = number of pages in free pool
+;        ADD     R6,R6,R7,LSL #2
+;        ADD     R6,R6,R7,LSL #3         ; R6 -> terminators of free pool
+;        MOV     R0,R6                   ; R0 -> block for OS_SetMemMapEntries
 ;
-        CMP     R2,#0
-        Pull    "R1-R7,PC",LE           ; no block!
+;        LDR     R1,pagesize
+;        LDR     R4,freepoolbase         ; R4 -> next address
+;        MOV     R5,#2                   ; R5 = protection level
+;01      LDR     R3,[R2],#12             ; R3 = page number
+;        CMP     R3,#nullptr
+;        SUBNE   R4,R4,R1
+;        STMNEIA R6!,{R3,R4,R5}          ; page number, address, protection level
+;        ADDNE   R7,R7,#1
+;        BNE     %BT01
 ;
-
-        LDR     R6,freepool
-        LDR     R7,freepoolpages        ; R7 = number of pages in free pool
-        ADD     R6,R6,R7,LSL #2
-        ADD     R6,R6,R7,LSL #3         ; R6 -> terminators of free pool
-        MOV     R0,R6                   ; R0 -> block for OS_SetMemMapEntries
-
-        LDR     R1,pagesize
-        LDR     R4,freepoolbase         ; R4 -> next address
-        MOV     R5,#2                   ; R5 = protection level
-01      LDR     R3,[R2],#12             ; R3 = page number
-        CMP     R3,#0
-        SUBGE   R4,R4,R1
-        STMGEIA R6!,{R3,R4,R5}          ; page number, address, protection level
-        ADDGE   R7,R7,#1
-        BGE     %BT01
-
-
-        STR     R4,freepoolbase
-        STR     R7,freepoolpages
-        MOV     R14,#-1
-        STR     R14,[R6]                ; terminator
-
-
-        SWI     XOS_SetMemMapEntries
-
-        Pull    "R1-R7,PC"              ; don't alter memorylimit
+;
+;        STR     R4,freepoolbase
+;        STR     R7,freepoolpages
+;        MOV     R14,#-1
+;        STR     R14,[R6]                ; terminator
+;
+;
+;        SWI     XOS_SetMemMapEntries
+;
+;        Pull    "R1-R7,PC"              ; don't alter memorylimit
 
 ;
 ; mapslotin
@@ -1082,8 +1089,8 @@ mapslotin       ROUT
         Pull    "R1-R4,PC",LE           ; task is dead (shouldn't happen)
 ;
         LDR     R0,[R1,#task_slotptr]
-        CMP     R0,#0                   ; no slot allocated
-        BLGT    mapin                   ; (corrupts R2)
+        CMP     R0,#nullptr             ; no slot allocated
+        BLNE    mapin                   ; (corrupts R2)
 ;
 
         LDR     R14,taskhandle
@@ -1165,8 +1172,8 @@ mapslotout      ROUT
         BCC     %BT01
 ;
         LDR     R0,[R6,#task_slotptr]
-        CMP     R0,#0                   ; R0 --> slot block
-        BLGT    mapout                  ; NB do this afterwards!
+        CMP     R0,#nullptr             ; R0 --> slot block
+        BLNE    mapout                  ; NB do this afterwards!
 ;
         Pull    "R1-R6,PC"
 
@@ -1224,11 +1231,11 @@ WimpSlot_Code   ROUT
 ;
         LDR     R1,[sp,#vec_min]
         CMP     R1,#0
-        BLE     %FT01
+        BEQ     %FT01
         BL      getminmax               ; R0 = min memory
         BVS     %FT99
         CMP     R0,R3
-        BLE     %FT01
+        BLS     %FT01
 ;
         Push    "R0"                    ; R0 = new current slot size
         MOV     R1,#-1                  ; leave next slot alone
@@ -1236,21 +1243,21 @@ WimpSlot_Code   ROUT
         Pull    "R1"
         BVS     %FT99
         CMP     R0,R1                   ; R0=actual size, R1=required size
-        BLT     err_notenoughmemory
+        BLO     err_notenoughmemory
         MOV     R3,R0                   ; R3 = new amount of memory
 01
         LDR     R1,[sp,#vec_max]
         CMP     R1,#0
-        BLE     %FT02
+        BEQ     %FT02
         BL      getminmax               ; R0 = max memory
         BVS     %FT99
         CMP     R0,R3
-        MOVLT   R1,#-1                  ; leave next slot alone
-        SWILT   XWimp_SlotSize
+        MOVLO   R1,#-1                  ; leave next slot alone
+        SWILO   XWimp_SlotSize
 02
         LDR     R1,[sp,#vec_next]
         CMP     R1,#0
-        BLE     %FT99
+        BEQ     %FT99
         BL      getminmax               ; R0 = new next slot size
         MOVVC   R1,R0
         MOVVC   R0,#-1                  ; leave current slot alone
@@ -1313,11 +1320,17 @@ getminmax       ROUT
         SWI     XOS_ReadUnsigned
         Pull    "R1-R3,PC",VS
 ;
-        LDRB    R3,[R1]                 ; if terminator is "K" or "k",
+        LDRB    R3,[R1]
         ASCII_UpperCase R3, R14
-        TEQ     R3,#"K"
+        TEQ     R3,#"K"                 ; if terminator is "K" or "k",
         ADDEQ   R1,R1,#1
         MOVEQ   R2,R2,LSL #10           ; multiply by 1024
+        TEQ     R3,#"M"                 ; if terminator is "M" or "m",
+        ADDEQ   R1,R1,#1
+        MOVEQ   R2,R2,LSL #20           ; multiply by 1048576
+        TEQ     R3,#"G"                 ; if terminator is "G" or "g",
+        ADDEQ   R1,R1,#1
+        MOVEQ   R2,R2,LSL #30           ; multiply by 1073741824
 ;
         LDRB    R14,[R1]                ; check terminator
         RSBS    R14,R14,#" "+1          ; ensure GT set if OK

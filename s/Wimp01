@@ -497,8 +497,6 @@ bignum          *       &0FFFFFFF
 nullptr         *       -1
 nullptr2        *       -2
 
-ROMstart        *       &3800000
-
 sz_scrleft      *       0
 sz_scrright     *       1280
 sz_scrbot2      *       0
@@ -770,6 +768,8 @@ plotsprCB               #       4       ; backdrop tiling CB
 ; these have moved!
 RAM_SWIEntry            #       12      ; 3 instructions for getting R12 back
 OScopy_ChangeDynamic    #       4       ; this must follow immediately
+ROMstart                #       4       ; ROM base address
+ROMend                  #       4       ; ROM end address (inclusive)
 
         ALIGNHASH  16			; missing HASH! JRC 25 Jul 1997
 clipx0          #       4
@@ -2230,7 +2230,7 @@ WimpWriteDir_Code
         SWI     XOS_ReadUnsigned
         Pull    "PC",VS
         CMP     R2,#1
-        Pull    "PC",GT
+        Pull    "PC",HI
         MOV     r0,#-1
         SWI     XTerritory_WriteDirection
         MOVVS   R0,#0
@@ -2310,7 +2310,7 @@ Wimp_SetMode_Code
 
         LDR     R12,[R12]               ; get workspace pointer!
         CMP     R2,#255
-        BGT     bad_param_exit2
+        BHI     bad_param_exit2
         LDR     R14,currentmode         ; only set the mode if different
         Debug   xx,"*WimpMode: old,new =",R14,R2
         CMP     R2,R14
@@ -2342,7 +2342,7 @@ setmode_from_specifier
 scan_for_param
         LDRB    R0,[R1],#1
         CMP     R0,#32
-        BLT     scan_ended
+        BLO     scan_ended
         BEQ     scan_for_param
         CMP     R0,#","
         BEQ     scan_for_param
@@ -2397,16 +2397,16 @@ get_eig_factors
         B       scan_for_param
 
 get_xres
-        CMP     R4,#0
-        BGE     bad_param_exit                  ; only one x allowed
+        CMP     R4,#-1
+        BNE     bad_param_exit                  ; only one x allowed
         SWI     XOS_ReadUnsigned
         BVS     bad_param_exit
         MOV     R4,R2
         B       scan_for_param
 
 get_yres
-        CMP     R5,#0
-        BGE     bad_param_exit                  ; only one y allowed
+        CMP     R5,#-1
+        BNE     bad_param_exit                  ; only one y allowed
         SWI     XOS_ReadUnsigned
         BVS     bad_param_exit
         MOV     R5,R2
@@ -2419,8 +2419,8 @@ get_frame
         B       scan_for_param
 
 get_colours
-        CMP     R6,#0
-        BGE     bad_param_exit                  ; only one C or G allowed
+        CMP     R6,#-1
+        BNE     bad_param_exit                  ; only one C or G allowed
 ; only 2,4,16,64,256,32T,32K,16M are valid
         SWI     XOS_ReadUnsigned
         BVS     bad_param_exit
@@ -2435,9 +2435,9 @@ get_colours
 ;        Push    "R0,R2",EQ
         CMPNE   R2,#64
         MOVEQ   R0,#3                           ; 8bpp
-        CMP     R0,#0
-        MOVGE   R6,R0
-        BGE     scan_for_param
+        CMP     R0,#-1
+        MOVNE   R6,R0
+        BNE     scan_for_param
         LDRB    R0,[R1]
         ASCII_UpperCase R0,R14
         CMP     R2,#16
@@ -2459,8 +2459,8 @@ get_colours
         B       scan_for_param
 
 get_greys
-        CMP     R6,#0
-        BGE     bad_param_exit                  ; only one C or G allowed
+        CMP     R6,#-1
+        BNE     bad_param_exit                  ; only one C or G allowed
         SWI     XOS_ReadUnsigned
         BVS     bad_param_exit
         CMP     R2,#16
@@ -2790,7 +2790,7 @@ SWIWimp_SpriteOp
         TEQ     R0,#99                  ; fast find
         BEQ     dospriteop
         CMP     R0,#SpriteReason_BadReasonCode
-        BGE     err_badR0
+        BHS     err_badR0
 ;
         ADR     R1,spritebits           ; disallow all other write operations
         MOV     R14,R0,LSR #5
@@ -3067,8 +3067,8 @@ gotwork
         BL      initptrs                ; also claims ChangeEnvironmentV
 ;
         SWI     XOS_ReadMemMapInfo      ; R0 = page size, R1 = number of pages
-        MOV     R1,#640*1024
-        DivRem  R2,R1,R0,R14            ; R2 = number of pages for 640k
+        MOV     R1,#DefaultNextSlot
+        DivRem  R2,R1,R0,R14            ; R2 = number of pages for 640k (or whatever)
         STR     R2,slotsize
 ;
  [ DontCheckModeOnInit
@@ -3727,7 +3727,7 @@ ValidateAddress
         |
         MOV     PC,lr
          ]
-        ]
+        |
         Debug   valid,"Validate address ",r2,r3
         Push    "LR"
         LDRB    r14,memoryOK                            ; BUGFIX: NRaine 6-Aug-96 (should be unconditional)
@@ -3736,13 +3736,14 @@ ValidateAddress
         LDR     r14,freepoolbase
         Debug   valid,"First address is",r14
         CMP     r2,r14
-        Pull    "PC",LT
+        Pull    "PC",LO
         LDR     r14,orig_applicationspacesize
         Debug   valid,"Last address is ",r14
         CMP     r3,r14
-        Pull    "PC",GT
+        Pull    "PC",HS
         MOV     r1,#0
         Pull    "PC"
+        ]
 
 ; ResourceFS has been reloaded - redeclare resource files
 ; In    R2 -> address to call
@@ -3766,8 +3767,8 @@ getromsprites
         SWI     XOS_CheckModeValid              ; get the REAL mode number!
         CMP     R0,#-1                  ; if mode does not exist,
         MOVEQ   R0,R1                   ; try to use substitute mode
-        CMP     R0,#0                   ; if R1 = -2, we're stuck!
-        LDRLT   R0,currentmode          ; (just give up and use the original)
+        CMP     R0,#-2                  ; if R1 = -2, we're stuck!
+        LDREQ   R0,currentmode          ; (just give up and use the original)
 ;
         MOV     R3,#"0"
         MOV     R4,#1
@@ -3946,7 +3947,7 @@ invalidatecache
         STR     R2,lastmode
 
         LDR     R2,tile_temptab
-        ORR     R2,R2,#&80000000
+        ORR     R2,R2,#1
         STR     R2,tile_temptab
 
         [ false
@@ -3954,11 +3955,11 @@ invalidatecache
         |
 ; tool translation table is invalid,  try to recache
         LDR     R2,tool_area
-        CMP     R2,#1
-        BLT     %FT99
+        CMP     R2,#0
+        BEQ     %FT99
         LDR     R2,tool_list
-        CMP     R2,#1
-        BLT     %FT99
+        CMP     R2,#0
+        BEQ     %FT99
 
         MOV     R2,#0
         STR     R2,tool_list      ; force recache next time we need it
@@ -4036,9 +4037,11 @@ UpCallCode	ROUT
 
         Push    "R1-R6"         ; no need to stash LR (we'll claim vector)
 
+      [ :LNOT: Medusa
         CMP     R6,#0                   ; bodge for old FileCores
-        ADRLTL	R6,disc
-        MOVLT   R5,#bignum              ; long timeout if R6 invalid
+        ADRMIL	R6,disc
+        MOVMI   R5,#bignum              ; long timeout if R6 invalid
+      ]
 
         SUB     sp,sp,#32
 ;
@@ -4208,7 +4211,7 @@ deallocateptrs	ROUT
 ;
         LDR     R2,fileaddress
         CMP     R2,#0
-        BLGT    XROS_Module              ; release the template loading buffer (ignore errors)
+        BLNE    XROS_Module              ; release the template loading buffer (ignore errors)
 ;
         STR     R1,pixtable_at
         STR     R1,pixtable_size
@@ -4287,13 +4290,13 @@ deallocateptrs	ROUT
         BNE     %FT11
         LDR     R2,[R2,#task_slotptr]
         Debug   mjs2," wimp01 (1) slotptr to free",R2
-        CMP     R2,#0
+        CMP     R2,#nullptr
       [ UseAMBControl
-        MOVGT   R0,#1   ;deallocate reason code
-        SWIGT   XOS_AMBControl
+        MOVNE   R0,#1   ;deallocate reason code
+        SWINE   XOS_AMBControl
       |
-        MOVGT   R0,#ModHandReason_Free
-        BLGT   XROS_Module                      ; free block (ignoring errors)
+        MOVNE   R0,#ModHandReason_Free
+        BLNE   XROS_Module                      ; free block (ignoring errors)
       ]
         LDR     R2,[R4,#-4]
         MOV     R0,#ModHandReason_Free
@@ -4302,10 +4305,12 @@ deallocateptrs	ROUT
         SUBS    R5,R5,#1
         BNE     %BT01
 ;
+      [ :LNOT: Medusa
         LDR     R2,freepool
-        CMP     R2,#0
-        MOVGT   R0,#ModHandReason_Free
-        BLGT   XROS_Module
+        CMP     R2,#nullptr2
+        MOVLO   R0,#ModHandReason_Free
+        BLLO   XROS_Module
+      ]
 ;
         BL      deletependingtask
 ;
@@ -4325,16 +4330,16 @@ deletependingtask
 ;
         LDR     R2,pendingtask
         CMP     R2,#0
-        BLE     %FT01
+        BMI     %FT01
         LDR     R2,[R2,#task_slotptr]   ; delete slot block
         Debug   mjs2," wimp01 (2) slotptr to free",R2
-        CMP     R2,#0
+        CMP     R2,#nullptr
       [ UseAMBControl
-        MOVGT   R0,#1   ;deallocate reason code
-        SWIGT   XOS_AMBControl
+        MOVNE   R0,#1   ;deallocate reason code
+        SWINE   XOS_AMBControl
       |
-        MOVGT   R0,#ModHandReason_Free
-        BLGT   XROS_Module
+        MOVNE   R0,#ModHandReason_Free
+        BLNE   XROS_Module
       ]
         LDR     R2,pendingtask          ; and task block (in that order)
         MOV     R0,#ModHandReason_Free
@@ -4350,8 +4355,8 @@ killiconbar
         Push    "LR"
         LDR     R2,[R1,#icd_list]
 01
-        CMP     R2,#0
-        BLE     %FT02
+        CMP     R2,#nullptr
+        BEQ     %FT02
         LDR     R4,[R2,#icb_link]
         MOV     R0,#ModHandReason_Free
         BL     XROS_Module              ; free block (ignoring errors)
@@ -4369,8 +4374,8 @@ deletemessagequeue
 ;
         LDR     R1,headpointer
 01
-        CMP     R1,#0
-        BLE     %FT02
+        CMP     R1,#nullptr
+        BEQ     %FT02
         MOV     R0,#ModHandReason_Free  ; free block (ignoring errors)
         MOV     R2,R1
         LDR     R1,[R1,#msb_link]       ; do this first!!!
@@ -4560,8 +4565,8 @@ Wimp_SWIdecode
         TSTNE   R14,#swf_alive
         BNE     jporg                           ; error if not initialised
         CMP     R14,#swf_checklimit
-        CMPLT   R1,#ApplicationStart
-        BLT     err_badpointer
+        CMPLO   R1,#ApplicationStart
+        BLO     err_badpointer
 
         [       outlinefont
         MOV     R14, #0
@@ -5481,8 +5486,8 @@ int_set_pointer_shape
         Push    "LR"
 ;
         CMP     R0,#0
-        CMPGT   R1,#0                   ; null pointer if <= 0
-        BLE     justsetshape
+        CMPNE   R1,#nullptr             ; null pointer if = -1
+        BEQ     justsetshape
 ;
         Push    "R0-R5"
         SUB     sp,sp,#12
@@ -6697,7 +6702,7 @@ copy0
         LDRB    R14,[R0],#1
         STRB    R14,[R1],#1
         CMP     R14,#32
-        BGE     %BT01
+        BHS     %BT01
 
         SUB     R1,R1,#1
 ;
@@ -6715,7 +6720,7 @@ count0
 01
         LDRB    R14,[R1],#1
         CMP     R14,#32
-        BGE     %BT01
+        BHS     %BT01
 
         SUB     R1,R1,R0
 ;

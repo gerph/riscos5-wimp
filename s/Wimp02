@@ -34,9 +34,9 @@ markinitialised
 ;
         LDR     R2,pendingtask          ; see if we can grab this one!
         CMP     R2,#0
-        MOVGT   R14,#nullptr
-        STRGT   R14,pendingtask
-        BGT     %FT02
+        MOVPL   R14,#nullptr
+        STRPL   R14,pendingtask
+        BPL     %FT02
 ;
         MOV     R3,#task_datasize
         BL      claimblock
@@ -74,14 +74,13 @@ markinitialised
 
         LDR     R14,=284                ; R4 = task handle from above.
         CMP     R0,R14
-        MOVGE   R14,#0
-        MOVLT   R14,#priority_old       ; if old style task then flag as old priorty
+        MOVHS   R14,#0
+        MOVLO   R14,#priority_old       ; if old style task then flag as old priorty
         STR     R14,[R2,#task_priority]
         Debug   task1,"task_priority =",R14
-        BLT     %FT01                   ; ignore the messages if not a valid task
+        BLO     %FT01                   ; ignore the messages if not a valid task
 
-        CMP     R3,#0                   ; is the handle valid?
-        CMPNE   R3,#nullptr
+        CMP     R3,R3,ASR #31           ; is the handle valid?
         STREQ   R3,[R2,#task_messages]
         BLNE    addmessages             ; add messages as required
 01
@@ -209,10 +208,10 @@ initfirsttask
 ;
         [ true
         LDR     R0,currentmode
-        CMP     R0,#0
-;        MOVGT   R1,#0
-;        STRGT   R1,currentmode
-        BLE     %FT02
+        CMP     R0,#-1
+;        MOVNE   R1,#0
+;        STRNE   R1,currentmode
+        BEQ     %FT02
 ;        BL      int_setmode
 ;        MOV     R1,#1
 ;        ADRL    R14,wimpmodebefore
@@ -406,8 +405,8 @@ initfirsttask
         Pull    "R0-R2"
 ;
         LDR     R0,backwindowhandle
-        CMP     R0,#0
-        BGT     %FT01
+        CMP     R0,#nullptr
+        BNE     %FT01
         ADR     R0,wn_backwindow
         MOV     R2,#0
         MOV     R3,#0
@@ -418,8 +417,8 @@ initfirsttask
         BVS     exitinit
 ;
         LDR     R0,errorhandle
-        CMP     R0,#0
-        BGT     %FT01
+        CMP     R0,#nullptr
+        BNE     %FT01
         ADR     R0,wn_error
         ADRL    R2,errortitle           ; indirected icons go in [errortitle]
         ADRL    R3,errortitend          ; (assume title is first icon)
@@ -480,8 +479,8 @@ initfirsttask
  ]
 01
         LDR     R0,commandhandle
-        CMP     R0,#0
-        BGT     %FT01
+        CMP     R0,#nullptr
+        BNE     %FT01
 ;
         ADRL    R0,wn_command           ; for *Copy etc.
         MOV     R2,#0
@@ -580,8 +579,8 @@ rationalisememory
         Debug   task1,"singletaskhandle",#singletaskhandle
 ;
         LDR     R14,singletaskhandle
-        CMP     R14,#0
-        BLE     returntaskhandle
+        CMP     R14,#nullptr
+        BEQ     returntaskhandle
 ;
 ; if old-style Wimp_Init, cover any pre-existing windows
 ;
@@ -841,7 +840,7 @@ resetkeycodes
         STRB    R1,[R3],#1
         ADD     R0,R0,#1
         CMP     R0,#228
-        BLE     %BT01
+        BLO     %BT01
 ;
         MOV     R0,#9
         MOV     R1,#0
@@ -854,8 +853,8 @@ resetkeycodes
         STRB    R1,[R3],#1
 ;
         LDR     R14,singletaskhandle
-        CMP     R14,#0                  ; old Wimp didn't set up escape!
-        BGT     noescape                ; NB old tasks can't start others!
+        CMP     R14,#nullptr            ; old Wimp didn't set up escape!
+        BNE     noescape                ; NB old tasks can't start others!
 ;
         MOV     R0,#229                 ; *FX 229,1 (escape ==> ascii 27)
         MOV     R1,#1
@@ -976,10 +975,10 @@ checkversion
 
      [ true
         CMP     R0,#200                 ; must be AT LEAST version 2.00
-        BLT     %FT01
+        BLO     %FT01
         CMP     R0,#300
-        MOVLT   R0,#200
-        TEQLT   R0,R0                   ; If 200 <= v < 300 Then v=200 !
+        MOVLO   R0,#200
+        TEQLO   R0,R0                   ; If 200 <= v < 300 Then v=200 !
         BEQ     %FT01
        [ true
        [ ChildWindows
@@ -992,8 +991,8 @@ checkversion
         |
         LDR     R14,=310
         CMP     R0,R14
-        MOVLT   R0,R14                 ; If 300 < v < 310 Then v=310
-        TEQLT   R0,R0                   ; If 200 <= v < 300 Then v=200 !
+        MOVLO   R0,R14                 ; If 300 < v < 310 Then v=310
+        TEQLO   R0,R0                   ; If 200 <= v < 300 Then v=200 !
        ]
 01
       [ true
@@ -1175,9 +1174,9 @@ $lab    SetConfig $string, $unit, $cmosbyte, $cmosbit, $cmossize, $shift, $eor, 
         MOVHI   R2, #&FF
           ]
         |
-        MOVLE   R3, R2
-        MOVLE   R4, #0
-        BLE     %FT07
+        MOVLS   R3, R2
+        MOVLS   R4, #0
+        BLS     %FT07
         MOV     R1, #10
         DivRem  R3, R2, R1, R0          ; R3 = R2 DIV 10,  R2 = R2 MOD 10
         CMP     R3, #((1 :SHL: $cmossize) - 1) / 10 ; do we need to round down to 15?
@@ -1298,8 +1297,8 @@ status_scaninttable
         CMP     R4, R3
         MOVHS   R2, R1
         ADD     R1, R1, #1
-        CMP     R3, #0
-        BGE     %BT01
+        CMP     R3, #-1
+        BNE     %BT01
         EXIT
 
 status_scanstringtable
@@ -1333,9 +1332,9 @@ status_scanstringtable
         ADD     R5, R5, #1
         B       %BT04
 05      ADD     sp, sp, #12 ; matches with above
-        CMP     R6, #0
-        MOVGE   R2, R6
-        EXIT    GE
+        CMP     R6, #-1
+        MOVNE   R2, R6
+        EXIT    NE
         MOV     R0, #0 ; "Bad configure option"
         SETV
         EXIT
@@ -1355,68 +1354,68 @@ status_clickrelease             DCB     "Click",0,0,0,  "Release",0,0,0,0,0
 WimpFlagsC_Code
     ConfigOption flags,,WimpFlagsCMOS,,,,,,,sysflags,,B
 statusmess_flags                DCB     "WimpFlags  ",0
-configmess_flags                DCB     "WimpFlags  <D>",cr,lf,0
+configmess_flags                DCB     "WimpFlags  <D>",lf,cr,0
         ALIGN
 
 WimpFontC_Code
     ConfigOption wimpfont,,DesktopFeaturesCMOS,1,4
 statusmess_wimpfont             DCB     "WimpFont   ",0
-configmess_wimpfont             DCB     "WimpFont   <D>",cr,lf,0
+configmess_wimpfont             DCB     "WimpFont   <D>",lf,cr,0
         ALIGN
 
 WimpDragDelayC_Code
     ConfigOption dragdelay,ds,WimpDragTimeCMOS,0,4,,default_drag_timelimit,WimpDragMoveLimitCMOS,0,drag_timelimit,x10
 statusmess_dragdelay            DCB     "WimpDragDelay  ",0
-configmess_dragdelay            DCB     "WimpDragDelay  <D>",cr,lf,0
+configmess_dragdelay            DCB     "WimpDragDelay  <D>",lf,cr,0
         ALIGN
 
 WimpDragMoveC_Code
     ConfigOption dragmove,osunits,WimpDragMoveLimitCMOS,2,5,noshift,default_drag_movelimit,,,drag_movelimit,,B
 statusmess_dragmove             DCB     "WimpDragMove  ",0
-configmess_dragmove             DCB     "WimpDragMove  <D>",cr,lf,0
+configmess_dragmove             DCB     "WimpDragMove  <D>",lf,cr,0
         ALIGN
 
 WimpDoubleClickDelayC_Code
     ConfigOption doubleclickdelay,ds,WimpDoubleClickTimeCMOS,0,4,,default_doubleclick_timelimit,WimpDoubleClickMoveLimitCMOS,0,doubleclick_timelimit,x10
 statusmess_doubleclickdelay     DCB     "WimpDoubleClickDelay  ",0
-configmess_doubleclickdelay     DCB     "WimpDoubleClickDelay  <D>",cr,lf,0
+configmess_doubleclickdelay     DCB     "WimpDoubleClickDelay  <D>",lf,cr,0
         ALIGN
 
 WimpDoubleClickMoveC_Code
     ConfigOption doubleclickmove,osunits,WimpDoubleClickMoveLimitCMOS,2,5,noshift,default_doubleclick_movelimit,,,doubleclick_movelimit,,B
 statusmess_doubleclickmove      DCB     "WimpDoubleClickMove  ",0
-configmess_doubleclickmove      DCB     "WimpDoubleClickMove  <D>",cr,lf,0
+configmess_doubleclickmove      DCB     "WimpDoubleClickMove  <D>",lf,cr,0
         ALIGN
 
 WimpAutoMenuDelayC_Code
     ConfigOption automenudelay,ds,WimpAutoSubMenuTimeCMOS,0,4,,default_automenudelay,WimpAutoSubMenuTimeCMOS,4,automenu_timelimit,x10
 statusmess_automenudelay        DCB     "WimpAutoMenuDelay  ",0
-configmess_automenudelay        DCB     "WimpAutoMenuDelay  <D>",cr,lf,0
+configmess_automenudelay        DCB     "WimpAutoMenuDelay  <D>",lf,cr,0
         ALIGN
 
 WimpMenuDragDelayC_Code
     ConfigOption menudragdelay,ds,WimpMenuDragDelayCMOS,0,4,,default_menudragdelay,WimpMenuDragDelayCMOS,4,menudragdelay,x10
 statusmess_menudragdelay        DCB     "WimpMenuDragDelay  ",0
-configmess_menudragdelay        DCB     "WimpMenuDragDelay  <D>",cr,lf,0
+configmess_menudragdelay        DCB     "WimpMenuDragDelay  <D>",lf,cr,0
         ALIGN
 
 WimpIconBarSpeedC_Code
     ConfigOption iconbarspeed,osupersec,WimpAutoSubMenuTimeCMOS,5,3,,default_iconbarspeed,,,iconbar_scroll_speed,,,iconbarlogtable,numeric
 statusmess_iconbarspeed         DCB     "WimpIconBarSpeed  ",0
-configmess_iconbarspeed         DCB     "WimpIconBarSpeed  <D>",cr,lf,0
+configmess_iconbarspeed         DCB     "WimpIconBarSpeed  <D>",lf,cr,0
         ALIGN
 
 WimpIconBarAccelerationC_Code
     ConfigOption iconbaraccel,osupersec2,WimpMenuDragDelayCMOS,5,3,,default_iconbaraccel,,,iconbar_scroll_accel,,,iconbarlogtable,numeric
 statusmess_iconbaraccel         DCB     "WimpIconBarAcceleration  ",0
-configmess_iconbaraccel         DCB     "WimpIconBarAcceleration  <D>",cr,lf,0
+configmess_iconbaraccel         DCB     "WimpIconBarAcceleration  <D>",lf,cr,0
         ALIGN
 
         [ SpritePriority
 WimpSpritePrecedenceC_Code
     ConfigOption sprite,,DesktopFeaturesCMOS,5,1,,0,,,preferredpool,,,status_ramrom
 statusmess_sprite               DCB     "WimpSpritePrecedence  ",0
-configmess_sprite               DCB     "WimpSpritePrecedence  RAM|ROM",cr,lf,0
+configmess_sprite               DCB     "WimpSpritePrecedence  RAM|ROM",lf,cr,0
         ALIGN
         ]
 
@@ -1424,7 +1423,7 @@ configmess_sprite               DCB     "WimpSpritePrecedence  RAM|ROM",cr,lf,0
 WimpButtonTypeC_Code
     ConfigOption button,,DesktopFeaturesCMOS,6,1,,0,,,buttontype,,B,status_clickrelease
 statusmess_button               DCB     "WimpButtonType  ",0
-configmess_button               DCB     "WimpButtonType  Click|Release",cr,lf,0
+configmess_button               DCB     "WimpButtonType  Click|Release",lf,cr,0
         ALIGN
         ]
 
@@ -1432,7 +1431,7 @@ configmess_button               DCB     "WimpButtonType  Click|Release",cr,lf,0
 WimpIconiseButtonC_Code
     ConfigOption iconisebut,,WimpDragMoveLimitCMOS,7,1,,0,,,iconisebutton,,B,status_offon
 statusmess_iconisebut           DCB     "WimpIconiseButton  ",0
-configmess_iconisebut           DCB     "WimpIconiseButton  On|Off",cr,lf,0
+configmess_iconisebut           DCB     "WimpIconiseButton  On|Off",lf,cr,0
         ALIGN
         ]
 
@@ -1440,7 +1439,7 @@ configmess_iconisebut           DCB     "WimpIconiseButton  On|Off",cr,lf,0
 WimpStickyEdgesC_Code
     ConfigOption sticky,,DesktopFeaturesCMOS,6,1,,0,,,stickyedges,,B,status_offon
 statusmess_sticky               DCB     "WimpStickyEdges  ",0
-configmess_sticky               DCB     "WimpStickyEdges  On|Off",cr,lf,0
+configmess_sticky               DCB     "WimpStickyEdges  On|Off",lf,cr,0
         ALIGN
         ]
 
@@ -1448,13 +1447,13 @@ configmess_sticky               DCB     "WimpStickyEdges  On|Off",cr,lf,0
 WimpAutoFrontIconBarC_Code
     ConfigOption autofront,,WimpDoubleClickMoveLimitCMOS,7,1,,1,,,popiconbar,,B,status_offon
 statusmess_autofront            DCB     "WimpAutoFrontIconBar  ",0
-configmess_autofront            DCB     "WimpAutoFrontIconBar  On|Off",cr,lf,0
+configmess_autofront            DCB     "WimpAutoFrontIconBar  On|Off",lf,cr,0
         ALIGN
 
 WimpAutoFrontDelayC_Code
     ConfigOption autofrontdelay,ds,WimpDoubleClickTimeCMOS,4,4,,default_autofrontdelay,WimpDoubleClickMoveLimitCMOS,1,popiconbar_pause,x10
 statusmess_autofrontdelay       DCB     "WimpAutoFrontDelay  ",0
-configmess_autofrontdelay       DCB     "WimpAutoFrontDelay  <D>",cr,lf,0
+configmess_autofrontdelay       DCB     "WimpAutoFrontDelay  <D>",lf,cr,0
         ALIGN
         ]
 
@@ -1462,7 +1461,7 @@ configmess_autofrontdelay       DCB     "WimpAutoFrontDelay  <D>",cr,lf,0
 WimpAutoScrollDelayC_Code
     ConfigOption scrolldelay,ds,WimpDragTimeCMOS,4,4,,default_autoscrolldelay,WimpDragMoveLimitCMOS,1,autoscr_default_pause,,B
 statusmess_scrolldelay          DCB     "WimpAutoScrollDelay  ",0
-configmess_scrolldelay          DCB     "WimpAutoScrollDelay  <D>",cr,lf,0
+configmess_scrolldelay          DCB     "WimpAutoScrollDelay  <D>",lf,cr,0
         ALIGN
         ]
 
@@ -1512,7 +1511,7 @@ WimpFlagsC_Code
 ;
         CMP     R0,#1
         BEQ     printstatus
-        BLT     printsyntax
+        BLO     printsyntax
 ;
         MOV     R1,R0                   ; R1 --> string
         MOV     R0,#&C000000A           ; base 10, check terminator, <= 255
@@ -1569,7 +1568,7 @@ WimpFlagsC_Code
         TEQ     R1,#DesktopFeaturesCMOS
         BNE     notdesktopcmos
         CMP     R2,#15
-        MyXError   WimpBadConfFont,GT
+        MyXError   WimpBadConfFont,HI
         BVS     %FT02
         Push    "R2"
         MOV     R0,#ReadCMOS
@@ -1695,15 +1694,15 @@ statusmess_osunits              DCB     "OSUnits",0
 
 statusmess_cs                   DCB     "CentSec",0
 
-configmess_wimpfont             DCB     "WimpFont  <D>",cr,lf,0
-configmess_flags                DCB     "WimpFlags  <D>",cr,lf,0
-configmess_mode                 DCB     "WimpMode   <D>",cr,lf,0
-configmess_dragmove             DCB     "WimpDragMove  <D>",cr,lf,0
-configmess_dragdelay            DCB     "WimpDragDelay  <D>",cr,lf,0
-configmess_doubleclickdelay     DCB     "WimpDoubleClickDelay  <D>",cr,lf,0
-configmess_doubleclickmove      DCB     "WimpDoubleClickMove  <D>",cr,lf,0
-configmess_automenudelay        DCB     "WimpAutoMenuDelay  <D>",cr,lf,0
-configmess_menudragdelay        DCB     "WimpMenuDragDelay  <D>",cr,lf,0
+configmess_wimpfont             DCB     "WimpFont  <D>",lf,cr,0
+configmess_flags                DCB     "WimpFlags  <D>",lf,cr,0
+configmess_mode                 DCB     "WimpMode   <D>",lf,cr,0
+configmess_dragmove             DCB     "WimpDragMove  <D>",lf,cr,0
+configmess_dragdelay            DCB     "WimpDragDelay  <D>",lf,cr,0
+configmess_doubleclickdelay     DCB     "WimpDoubleClickDelay  <D>",lf,cr,0
+configmess_doubleclickmove      DCB     "WimpDoubleClickMove  <D>",lf,cr,0
+configmess_automenudelay        DCB     "WimpAutoMenuDelay  <D>",lf,cr,0
+configmess_menudragdelay        DCB     "WimpMenuDragDelay  <D>",lf,cr,0
                                 ALIGN
 
 printsyntax
@@ -1751,7 +1750,7 @@ SWIWimp_SetMode
         BVS     ExitWimp
         LDR     R2,taskcount
         CMP     R2,#0
-        BGT     %FT01
+        BNE     %FT01
         [ Medusa
         BL      copy_mode_specifier
         ]
@@ -1760,7 +1759,7 @@ SWIWimp_SetMode
         ORR     R14,R1,#cf_suspended    ; since the desktop is intact
         STR     R14,commandflag
         CMP     R2,#0
-        BLGT    int_setmode
+        BLNE    int_setmode
 
         STR     R1,commandflag
         TST     R1,#cf_active           ; if command window already active,
@@ -1853,7 +1852,7 @@ copy_mode_specifier
         BNE     %BT7
         SUB     R14,R3,R2               ; -1 is allowed in first bit
         CMP     R14,#24
-        BLT     %BT7
+        BLO     %BT7
 ; R2 -> copy of specifier
         STR     R2,[SP]
         CLRV
@@ -1888,7 +1887,7 @@ int_setmode     ROUT
 
         [ Medusa
         CMP     R0,#256
-        BLT     %FT20
+        BLO     %FT20
 ; been given a mode specifier, must copy this before calling screen SWI.
         LDR     R14,currentmode
         CMP     R0,R14
@@ -1916,7 +1915,7 @@ int_setmode     ROUT
         BLVS    recalcmodevars          ; if it fails, then this wont happen
 
         CMP     R2,#256
-        BLT     %FT12
+        BLO     %FT12
         CMP     R2,R1                   ; old mode=new mode
         BEQ     %FT12
         MOV     R0,#ModHandReason_Free
@@ -1930,7 +1929,7 @@ int_setmode     ROUT
 20
         LDR     R14,currentmode
         CMP     R14,#256
-        BLT     %FT30
+        BLO     %FT30
 ; need to free current mode's specifier block if change succeeds
         CLRV
         Push    "R14"
@@ -1962,7 +1961,7 @@ int_setmode     ROUT
         ADD     sp,sp,#12               ; correct stack (discard R0)
 ;
         MOV     R0,#2                   ; shrink screen memory as small as poss
-        MOV     R1,#-64*&100000
+        MOV     R1,#1:SHL:31
         SWI     XOS_ChangeDynamicArea
         CLRV                            ; ignore 'Unable to move memory'
 
@@ -1971,11 +1970,11 @@ int_setmode     ROUT
         LDR     R0,scrx1
         LDR     R1,lastmode_x1
         CMP     R0,R1
-        LDRGE   R0,scry1
-        LDRGE   R1,lastmode_y1
-        CMPGE   R0,R1
-        MOVGE   R14,#0
-        MOVLT   R14,#ws_onscreenonce    ; force onto screen if getting smaller
+        LDRHS   R0,scry1
+        LDRHS   R1,lastmode_y1
+        CMPHS   R0,R1
+        MOVHS   R14,#0
+        MOVLO   R14,#ws_onscreenonce    ; force onto screen if getting smaller
         STR     R14,forceflags
 ;
         LDR     R14,singletaskhandle
@@ -2036,8 +2035,8 @@ nomodemess
 SWIWimp_SetPalette ROUT
         MyEntry "SetPalette"
 
-        CMP     userblk,#0
-        ADRLEL  userblk,emergencypalette        ; set default if R1 <= 0
+        CMP     userblk,userblk,ASR #31
+        ADREQL  userblk,emergencypalette        ; set default if R1 <= 0
         BL      int_setpalette
         B       ExitWimp
 
@@ -2100,7 +2099,7 @@ SWIWimp_ReadPalette ROUT
 ;
         LDR     R1,log2bpp
         CMP     R1,#3
-        BGT     get_16bpp_GCOLS
+        BHI     get_16bpp_GCOLS
 
         MOV     R1,#16                  ; copy the first 16 entries from the table
 01      LDR     R3,[R14],#4
@@ -2112,10 +2111,10 @@ SWIWimp_ReadPalette ROUT
         LDR     R0,log2bpp
         CMP     R0,#3                   ; is the depth of this mode valid
         [ false
-        RSBGT   R0,R1,#16               ; R0 is wimp colour
-        ORRGT   R3,R3,R0
+        RSBHI   R0,R1,#16               ; R0 is wimp colour
+        ORRHI   R3,R3,R0
         ]
-        BGT     %FT02
+        BHI     %FT02
         ]
         ; if not then ignore it
 ;
@@ -2319,8 +2318,9 @@ skip_backdrop
         Pull    "PC",EQ
 
         LDR     handle,iconbarhandle
-        SUBS    R2,handle,#0            ; R2 = bhandle (ie. open at same height)
-        BLE     %FT01
+        CMP     handle,#nullptr
+        BEQ     %FT01
+        MOV     R2,handle               ; R2 = bhandle (ie. open at same height)
         BL      openiconbar             ; open at correct size
         ADRVC   R7,iconbarleft
         BLVC    recalcposns
@@ -2655,7 +2655,7 @@ restorekeycodes
         Pull    "R0"
         ADD     R0,R0,#1
         CMP     R0,#228
-        BLE     %BT01
+        BLS     %BT01
 ;
         MOV     R0,#9                   ; *FX 9,<n>
         LDRB    R1,[R3],#1
@@ -2665,11 +2665,11 @@ restorekeycodes
         SWI     XOS_Byte
 ;
         LDR     R14,singletaskhandle    ; old Wimp didn't touch this!
-        CMP     R14,#0
-        MOVLE   R0,#229
-        LDRLEB  R1,[R3],#1
-        MOVLE   R2,#0
-        SWILE   XOS_Byte                ; *FX 229,<x>
+        CMP     R14,#nullptr
+        MOVEQ   R0,#229
+        LDREQB  R1,[R3],#1
+        MOVEQ   R2,#0
+        SWIEQ   XOS_Byte                ; *FX 229,<x>
 ;
         EXITS                           ; forget errors
 
@@ -2682,7 +2682,7 @@ deallocatependingtask
 ;
         LDR     R4,pendingtask          ; delete task block (gone for good)
         CMP     R4,#0
-        BLE     %FT01
+        BMI     %FT01
         LDR     R2,[R4,#task_slotptr]
         BL      deallocate              ; reclaim the memory
 
@@ -2770,10 +2770,10 @@ increment_swap_filename
         LDRB    R14,[R0]
         ADD     R14,R14,#1
         CMP     R14,#"Z"
-        MOVGT   R14,#"A"
+        MOVHI   R14,#"A"
         STRB    R14,[R0],#-1
-        CMPGT   R0,R1
-        BGT     %BT01
+        CMPHI   R0,R1
+        BHI     %BT01
 
         Pull    "R0-R1,PC"
    ]
@@ -2990,6 +2990,20 @@ inittasks
         STR     R0,myref                ; confuse punter by randomising myref
         MOV     R0,R0,LSL #flag_versionbit  ; unset bottom bits
         STR     R0,tasknumber           ; global task version number
+
+        ; Figure out ROM location
+        MOV     R0,#ModHandReason_LookupName
+        ADR     R1,UtilityModuleName
+        SWI     XOS_Module
+        MOVVS   R3,#&03800000           ; R3 = address of utility module
+        MOV     R3,R3,LSR #20
+        MOV     R3,R3,LSL #20           ; round down to a megabyte (= ROM base, hopefully)
+        CMP     R3,#&04000000
+        ADDLO   R4,R3,#8*1024*1024      ; assume 8M ROM if <64M (Arthur-RISC OS 4)
+        ADDHS   R4,R3,#64*1024*1024     ; and 64M ROM if base >=64M (RISC OS 5)
+        SUB     R4,R4,#1                ; make end inclusive (may be &FFFFFFFF)
+        STR     R3,ROMstart
+        STR     R4,ROMend
 ;
    [ :LNOT: KernelLocksFreePool
         BL      initdynamic             ; needs doing on Service_Reset
@@ -3002,6 +3016,9 @@ inittasks
         Debug   xx,"initptrs; taskcount =",#taskcount
 ;
         Pull    "R0-R11,PC"
+
+UtilityModuleName
+        = "UtilityModule", 0
 
         LTORG
 
@@ -3125,8 +3142,8 @@ wipeicons
         LDR     R14,[R1,#icd_list]              ; R1 --> head of list
         LDR     R1,taskhandle
 02
-        CMP     R14,#0
-        Pull    "R1-R2,PC",LE
+        CMP     R14,#nullptr
+        Pull    "R1-R2,PC",EQ
         LDR     R2,[R14,#icb_taskhandle]        ; R2 = task handle
         TEQ     R2,R1                           ; (no version bits internally)
         LDRNE   R14,[R14,#icb_link]
@@ -3243,14 +3260,14 @@ colourlp2
         BL      recalcpalette
 ;
         LDR     R14,taskcount           ; if we're running,
-        CMP     R14,#1
-        LDRGE   R14,log2bpp             ; and in 256-colour mode,
-        CMPGE   R14,#3
-        MOVGE   cx0,#-bignum
-        MOVGE   cy0,#-bignum
-        MOVGE   cx1,#bignum
-        MOVGE   cy1,#bignum
-        BLGE    markinvalid_cx0cy0cx1cy1
+        CMP     R14,#0
+        LDRNE   R14,log2bpp             ; and in 256-colour mode,
+        CMPNE   R14,#3
+        MOVNE   cx0,#-bignum
+        MOVNE   cy0,#-bignum
+        MOVNE   cx1,#bignum
+        MOVNE   cy1,#bignum
+        BLNE    markinvalid_cx0cy0cx1cy1
 99
         Pull    "R1-R12,PC"
 
@@ -3311,17 +3328,17 @@ recalcpalette
 ;
         LDR     R2,log2bpp              ; get the Log2BPP of the mode
         CMP     R2,#3
-        BGE     setpalette_finished
+        BHS     setpalette_finished
 ;
         CMP     R2,#1
  [ False                                ; Prior to v310
-        ADRLTL  R3,transtable1          ; R3 -> translation table 1BPP
+        ADRLOL  R3,transtable1          ; R3 -> translation table 1BPP
         ADREQL  R3,transtable2          ;                         2BPP
-        ADRGTL  R3,transtable4          ;                         4BPP
+        ADRHIL  R3,transtable4          ;                         4BPP
  |                                      ; Always use default mappings
-        ADRLTL  R3,map1bpp              ; R3 -> translation table 1BPP
+        ADRLOL  R3,map1bpp              ; R3 -> translation table 1BPP
         ADREQL  R3,map2bpp              ;                         2BPP
-        ADRGTL  R3,map4bpp              ;                         4BPP
+        ADRHIL  R3,map4bpp              ;                         4BPP
  ]
 ;
         MOV     R14,#1
@@ -3522,12 +3539,12 @@ force_redraw_special
 
         CMP     R2,#1
       [ IconiseButton
-        RSBGES  R14,R2,#8
+        RSBHSS  R14,R2,#8
       |
-        RSBGES  R14,R2,#7
+        RSBHSS  R14,R2,#7
       ]
-        MOVGE   R0,R2                           ; ignore all values except 1 to 7
-        BLGE    int_force_redraw_border
+        MOVHS   R0,R2                           ; ignore all values except 1 to 7
+        BLHS    int_force_redraw_border
 
         B       ExitWimp
 
@@ -3756,9 +3773,9 @@ crw5e
         STR     R0,[handle,#w_bhandle]          ; no window above it
 ;
         LDR     R14,singletaskhandle
-        CMP     R14,#0
-        MOVGT   R14,#0
-        STRGT   R14,[handle,#w_minx]            ; they meant 0 really!
+        CMP     R14,#nullptr
+        MOVNE   R14,#0
+        STRNE   R14,[handle,#w_minx]            ; they meant 0 really!
         ASSERT  w_miny=w_minx+2
 ;
 ; check that work area extent is reasonable
@@ -4014,8 +4031,8 @@ SWIWimp_CreateIcon
         MyEntry "CreateIcon"
 ;
         LDR     handle,[userblk]
-        CMP     handle,#0
-        BLT     addtoiconbar                    ; handle = -1 or -2
+        CMP     handle,#-8
+        BHS     addtoiconbar                    ; handle = -1 - -8
         BL      checkhandle_owner               ; check that window is owned!
         BLVC    int_create_icon
         B       ExitWimp
@@ -4238,8 +4255,9 @@ SWIWimp_DeleteIcon
         CMP     R2,#nullptr                     ; ignore null deletes
         BLE     ExitWimp                        ; (they don't exist anyway)
 ;
-        CMP     handle,#0
-        BLT     removefromiconbar
+        CMP     handle,#nullptr
+        CMPNE   handle,#nullptr2
+        BEQ     removefromiconbar
         BL      checkhandle_owner               ; ensure window is owned
         BLVC    int_deleteicon
         B       ExitWimp
@@ -4267,11 +4285,11 @@ int_deleteicon
         ADD     R0,R0,R2,ASL #i_shift
         SUB     R14,R3,#1                       ; compare with no. of icons-1
         CMP     R2,R14
-        Pull    "R1-R3,R6,PC",GT                ; deleted (doesn't exist)
-        LDRLT   R14,[R0,#i_flags]
-        ORRLT   R14,R14,#is_deleted
-        STRLT   R14,[R0,#i_flags]
-        Pull    "R1-R3,R6,PC",LT
+        Pull    "R1-R3,R6,PC",HI                ; deleted (doesn't exist)
+        LDRLO   R14,[R0,#i_flags]
+        ORRLO   R14,R14,#is_deleted
+        STRLO   R14,[R0,#i_flags]
+        Pull    "R1-R3,R6,PC",LO
 ;
 ; if an icon is deleted from the end, see if we can delete any more
 ;
@@ -4305,8 +4323,7 @@ SWIWimp_OpenWindow
         MOVEQ   R14,#0                  ; ensure <> "TASK"
         STREQ   R14,[sp,#1*4]           ; and store where it will be reloaded into R2
 
-        CMP     userblk,#0              ; If R1=0 or -1 on entry, just flush the pending opens
-        CMPNE   userblk,#nullptr
+        CMP     userblk,userblk,ASR #31 ; If R1=0 or -1 on entry, just flush the pending opens
         BEQ     doflush
 
         BL      int_open_window         ; child windows can be opened by a task other than the owner
@@ -6784,9 +6801,9 @@ check_redraw_border  ROUT
         ADD     R14,handle,#w_x0
         LDMIA   R14,{cx0,cy0,cx1,cy1}   ; redraw relevant border if its position has changed
         CMP     R0,#5
-        LDRLT   cy0,[handle,#w_way1]    ; top border     (3)
+        LDRLO   cy0,[handle,#w_way1]    ; top border     (3)
         LDREQ   cx0,[handle,#w_wax1]    ; right border   (5)
-        LDRGT   cy1,[handle,#w_way0]    ; bottom border  (7)
+        LDRHI   cy1,[handle,#w_way0]    ; bottom border  (7)
 
         Debug   opn,"Invalidating border rectangle",cx0,cy0,cx1,cy1
         BL      subwindowrect

@@ -105,7 +105,7 @@ SWIWimp_AutoScroll
         BEQ     %FT01                   ; don't bother validating if disabling
 
         CMP     userblk, #ApplicationStart
-        MyXError  WimpBadPtrInR1, LT, L
+        MyXError  WimpBadPtrInR1, LO, L
         BVS     ExitWimp                ; then check pointer
 
         LDR     handle, [userblk, #a_handle]
@@ -122,7 +122,7 @@ SWIWimp_AutoScroll
 
 return_autoscroll_state
         CMP     userblk, #ApplicationStart
-        MyXError  WimpBadPtrInR1, LT, L
+        MyXError  WimpBadPtrInR1, LO, L
         BVS     ExitWimp                ; just check pointer
 
         ADRL    R14, autoscr_state
@@ -163,8 +163,8 @@ int_autoscroll
         MOVEQ   x0, x0, LSL #1
         ADDEQ   x0, x0, x0, LSL #2      ; load default time *10 (ds -> cs)
 
-        CMP     y0, #&8000
-        BGE     %FT01                   ; if a user routine, leave alone
+        CMP     y0, #ApplicationStart
+        BHS     %FT01                   ; if a user routine, leave alone
 
         TST     y0, #1                  ; NB if you add further types, keeping
         MOVEQ   y0, #0                  ; bit 0 set will guarantee that some
@@ -567,7 +567,7 @@ poll_autoscroll
 
         LDR     R1, autoscr_next_t      ; exit if pause hasn't finished
         CMP     R0, R1
-        EXITS   LT                      ; else drop through to startautoscroll
+        EXITS   LO                      ; else drop through to startautoscroll
 
 startautoscroll
         MOV     R0, #-1                 ; set flags as necessary
@@ -605,7 +605,7 @@ continueautoscroll
         SWI     XOS_ReadMonotonicTime   ; R0 = current time
         LDR     R1, autoscr_next_t
         CMP     R1, R0
-        EXITS   GT                      ; give other events a chance
+        EXITS   HI                      ; give other events a chance
 
         MOV     R1, #-1
         STRB    R1, autoscr_pausing     ; give other events a chance next time

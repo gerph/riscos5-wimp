@@ -198,7 +198,7 @@ SWIWimp_RegisterFilter
         MyEntry "RegisterFilter"
 
         CMP     R0,#WimpFilter_MAX      ; filter number valid?
-        BGE     err_badR0               ; if not then return an error
+        BHS     err_badR0               ; if not then return an error
 
         TEQ     R1,#0                   ; de-register a filter
         ADREQ   R1,filtertable
@@ -350,9 +350,9 @@ SWIWimp_Poll
 
         LDR     R14,[R4,#task_wimpver]
         CMP     R14,#223
-        MOVLT   R3,#0                   ; R3=0 => no poll word
-        BLLT    killfpblock             ; get rid of this!
-        BLT     %FT01
+        MOVLO   R3,#0                   ; R3=0 => no poll word
+        BLLO    killfpblock             ; get rid of this!
+        BLO     %FT01
 
 ; this stuff only applies to tasks that know about Wimp 2.23 or later
 ; bits 22,23 => poll word, bit 24 => save/restore FP registers
@@ -362,26 +362,22 @@ SWIWimp_Poll
 
         TST     R0,#flag_pollword       ; no poll word if this bit unset
         MOVEQ   R3,#0
-        TSTNE   R0,#flag_pollfast       ; top bit set => poll quickly
-        ORRNE   R3,R3,#&80000000
 
-        BICS    R14,R3,#&80000000       ; check that address is
-        TST     R14,#3                  ; word-aligned
+        TST     R3,#3                   ; check that address is word-aligned
         BNE     err_badR3
-        CMP     R14,#&8000              ; and not in application space
+        CMP     R3,#ApplicationStart    ; and not in application space
 
         [ Medusa
-        BLT     %FT05
-        Push    "R0"
-        LDR     R0,orig_applicationspacesize
-        SUBS    R14,R0,R14
-        Pull    "R0"
-05
+        LDRHS   R14,orig_applicationspacesize
+        CMPHS   R14,R3
         |
-        RSBGES  R14,R14,#&1000000	; APPSPACE
+        RSBHSS  R3,R3,#&1000000		; APPSPACE
         ]
+        BHS     err_badR3
 
-        BGE     err_badR3
+        TST     R0,#flag_pollword
+        TSTNE   R0,#flag_pollfast       ; bottom bit set => poll quickly
+        ORRNE   R3,R3,#1
 
         MOV     R14,R0,LSR #flag_versionbit   ; object if others set
         BICS    R14,R14,#flag_allowed :SHR: flag_versionbit
@@ -477,8 +473,8 @@ taskisused
 ;
       [ debugescape
         LDR     R14,singletaskhandle
-        CMP     R14,#0                  ; old Wimp didn't set up escape!
-        BGT     %FT02
+        CMP     R14,#nullptr            ; old Wimp didn't set up escape!
+        BNE     %FT02
 ;
         Push    "R0-R2"
 
@@ -513,7 +509,7 @@ repollwimp
         TSTNE   R14, #PortableFeature_Idle      ; and Portable_Idle works
         SWINE   XPortable_Idle                  ; then go dormant until next interrupt or centi-second tick
  ]
-        MOV     R0,#&80000000
+        MOV     R0,#1
         BL      scanpollwords           ; scan high-priority tasks
         BNE     ExitPoll
 
@@ -522,16 +518,16 @@ repollwimp
         LDR     userblk,[R14,#task_registers+4*1]
 ;
         LDR     R2,headpointer          ; are there any outstanding messages?
-        CMP     R2,#0
-        BGT     returnmessage
+        CMP     R2,#nullptr
+        BNE     returnmessage
 ;
       [ MultiClose
         LDR     R2, nextwindowtoiconise
         TEQ     R2, #0
         BLNE    iconisenextwindow
         LDR     R2, headpointer         ; are there any outstanding messages now?
-        CMP     R2, #0
-        BGT     returnmessage
+        CMP     R2, #nullptr
+        BNE     returnmessage
       ]
 ;
         MOV     R14,#0
@@ -1049,7 +1045,7 @@ lookatpointer
         TEQ     R14,#drag_scrollboth    ; use vscroll bit of sysflags for this
         MOVEQ   R14,#drag_vscroll
         CMP     R14,#drag_user
-        BGE     notdragging             ; only system drags are elegible
+        BHS     notdragging             ; only system drags are elegible
 
         Push    "R0"
         LDRB    R0,sysflags             ; drag bits are 0..3
@@ -1095,9 +1091,9 @@ returndrag
 
         CMP     R1,#drag_scrollboth
         CMPNE   R1,#drag_user-1
-        STMGTIA userblk,{cx0,cy0,cx1,cy1}       ; final box coords
-        MOVGT   R0,#User_Dragbox
-        BGT     ExitPoll                        ; return User_DragBox
+        STMHIIA userblk,{cx0,cy0,cx1,cy1}       ; final box coords
+        MOVHI   R0,#User_Dragbox
+        BHI     ExitPoll                        ; return User_DragBox
 ;
 ; return Open_Window_Request to the application
 ; R1 = drag type
@@ -1169,8 +1165,8 @@ gonewposnsize
 checkiconbarpop
 	Push	"R0,LR"
 	LDR	R14,singletaskhandle
-	CMP	R14,#0
-	Pull	"R0,PC",GT		; old-style tasks don't have an icon bar!
+	CMP	R14,#nullptr
+	Pull	"R0,PC",NE		; old-style tasks don't have an icon bar!
 	LDR	R14,iconbar_pop_state
 	ADD	PC,PC,R14,LSL #2
 	NOP
@@ -1202,9 +1198,9 @@ checkiconbarpop
 	; Don't bring to front if dragging a window
 	LDR	R14,dragtype
 	CMP	R14,#drag_posn
-	BLT	%FT11
+	BLO	%FT11
 	CMP	R14,#drag_vscroll
-	Pull	"R0,PC",LE
+	Pull	"R0,PC",LO
 	TEQ	R14,#drag_scrollboth
 	Pull	"R0,PC",EQ
 
@@ -1246,8 +1242,8 @@ checkiconbarpop
 50
 	MOV	R0,R14
 	LDR	handle,iconbarhandle
-	CMP	handle,#0
-	Pull	"R0,PC",LE
+	CMP	handle,#nullptr
+	Pull	"R0,PC",EQ
 
 ;
 ; As we enter here, R0=0 means pop to front, else go to back (or previous position)
@@ -1351,12 +1347,13 @@ notdragging
         STRB    R14, submenuopenedbyclick
       ]
 01
-        CMP     R3,#0
-        BLE     %FT90
-        CMP     R4,#0
-        BLT     %FT90
-        TST     R3,#1
+        CMP     R3,#nullptr
         BEQ     %FT90
+        CMP     R4,#nullptr
+        CMPNE   R4,#nullptr2
+        BEQ     %FT90
+;        TST     R3,#1
+;        BEQ     %FT90
 
         Debug   bo,"New window,icon",r3,r4
 
@@ -1391,8 +1388,8 @@ ptr_iconbar_icon
 
         MOV     r2,#WimpValidation_Pointer
         LDR     r3,[r14,#i_data+4]      ; Pointer to validation string.
-        CMP     r3,#0
-        BLE     %FT90
+        CMP     r3,r3,ASR #31
+        BEQ     %FT90
         DebugS  bo,"Validation string is ",r3
         BL      findcommand
         BNE     %FT90
@@ -1406,8 +1403,8 @@ ptr_iconbar_icon
         CMP     R14,#";"
         MOVEQ   R14,#0
         CMP     R14,#" "
-        STRGTB  r14,[r2],#1
-        BGT     %BT88
+        STRHIB  r14,[r2],#1
+        BHI     %BT88
 
         MOV     R4,#0                   ; Default active point is 0,0
         MOV     R5,#0
@@ -1486,8 +1483,8 @@ ptr_iconbar_icon
 
  [ false
         LDR     R14,iconbarhandle
-        CMP     R14,#0
-        BLE     %FT01                   ; no iconbar
+        CMP     R14,#nullptr
+        BEQ     %FT01                   ; no iconbar
         TEQ     R3,R14
         BNE     %FT01                   ; this isn't it!
 ;
@@ -1517,8 +1514,8 @@ ptr_iconbar_icon
         Pull    "R0-R8,handle,userblk"
   |
         LDR     R14,iconbarhandle
-        CMP     R14,#0
-        BLE     %FT01                   ; no iconbar
+        CMP     R14,#nullptr
+        BEQ     %FT01                   ; no iconbar
         TEQ     R3,R14
 	MOVNE	R14,#0
 	STRNE	R14,iconbar_scroll_start_time
@@ -2070,8 +2067,8 @@ justtellhim
 ; page in correct task (again) - R3 may be changed by waitdrag
 ;
         LDR     R14,iconbarhandle
-        CMP     R14,#0                  ; don't do this if no iconbar!
-        BLE     notiniconbar
+        CMP     R14,#nullptr            ; don't do this if no iconbar!
+        BEQ     notiniconbar
         TEQ     R3,R14
         BNE     notiniconbar
 ;
@@ -2088,9 +2085,9 @@ justtellhim
 ; NB ptrwindow may not be the same as R3 (eg. drag button activates later)
 ;
 notiniconbar
+        CMP     R3,#nullptr
+        BEQ     repollwimp              ; window has been deleted!!!
         Abs     handle,R3
-        CMP     handle,#0
-        BLE     repollwimp              ; window has been deleted!!!
         LDR     R14,[handle,#w_taskhandle]
         Task    R14,,"ReturnClick"
 ;
@@ -2104,11 +2101,11 @@ notiniconbar
         TEQ     R3,R14
         MOVEQ   R3,#nullptr             ; (for menu clicks in singletask mode)
 ;
-        CMP     R3,#0                   ; is it a real window?
-        BLE     %FT10                   ; if not then icon
+        CMP     R3,#nullptr             ; is it a real window?
+        BEQ     %FT10                   ; if not then icon
 ;
         CMP     R4,#0
-        BLT     %FT10                   ; if its the background then ignore it
+        BMI     %FT10                   ; if its the background then ignore it
 ;
 	TST	R2,#button_middle	; ignore menu clicks for slabbing
 	BNE	%FT10
@@ -2143,7 +2140,7 @@ notiniconbar
 ;
 	LDR	R14,border_windowselected    ; Make sure previous selected icon
 	CMP	R14,#nullptr                 ; is unslabbed
-	BLE	%F1
+	BEQ	%F1
 	TEQ	R14,handle
 	LDR	R0,border_iconselected
 	CMP	R0,#nullptr
@@ -2186,8 +2183,8 @@ returnclick
         MOV     R0,#Mouse_Click
 
         LDR     R14,headpointer
-        CMP     R14,#0
-        BLE     ExitPoll                ; return directly for efficiency
+        CMP     R14,#nullptr
+        BEQ     ExitPoll                ; return directly for efficiency
 
         MOV     R1,userblk
         LDR     R2,taskhandle
@@ -2204,8 +2201,8 @@ trykeys
  [ UTF8
         ; First, check if caret task is queueing keypresses for later handling
         LDR     handle, caretdata + 0
-        CMP     handle, #0
-        BLE     %FT11                   ; still read character (may be hot!)
+        CMP     handle, #nullptr
+        BEQ     %FT11                   ; still read character (may be hot!)
         BL      checkhandle             ; check it hasn't been deleted!
         MOVVS   handle, #nullptr
         STRVS   handle, caretdata + 0   ; if deleted, turn it off
@@ -2213,7 +2210,7 @@ trykeys
 
         LDR     R14, [handle, #w_taskhandle]
         CMP     R14, #0
-        LDRLT   R14, menutaskhandle
+        LDRMI   R14, menutaskhandle
         LDR     R14, [wsptr, R14]
         LDR     R14, [R14, #task_flagword]
         TST     R14, #keypress_bit
@@ -2230,18 +2227,18 @@ trykeys
 01      LDRB    R0, [R1, #1]            ; copy the other bytes down
         STRB    R0, [R1], #1
         CMP     R1, R2
-        BLT     %BT01
+        BLO     %BT01
         SUB     R14, R14, #1            ; decrement byte count
         STRB    R14, keyout_buflen
 
         LDR     R14, singletaskhandle
-        CMP     R14, #0
-        BLLE    topmost_window
-        STRLE   R0, hotkeyptr           ; initialise hotkey system, unless we're single-tasking
+        CMP     R14, #nullptr
+        BLEQ    topmost_window
+        STREQ   R0, hotkeyptr           ; initialise hotkey system, unless we're single-tasking
         ADRL    R14, savedcaretdata     ; get caret data
         LDMIA   R14, {R0-R5}
-        CMP     R0, #0                  ; is there a caret?
-        BGT     %FT02
+        CMP     R0, #nullptr            ; is there a caret?
+        BNE     %FT02
         BL      int_processkey          ; if not, send hotkey
         B       repollwimp              ; (no need to check if single-tasking, as we won't get here otherwise)
 02      MOV     handle, R0
@@ -2251,7 +2248,7 @@ trykeys
         BVS     trykeys                 ; and restart key processing
         LDR     R14, [handle, #w_taskhandle]
         CMP     R14, #0
-        LDRLT   R14, menutaskhandle
+        LDRMI   R14, menutaskhandle
         Task    R14,, "KeyPressed continuation"
         STMIA   userblk, {R0-R6}
         MOV     R0, #Key_Pressed
@@ -2296,7 +2293,7 @@ trykeys_getinternalkeycode
       |
 01      CMP     R3, #6
       ]
-        BGE     %FT02                   ; break from loop if full
+        BHS     %FT02                   ; break from loop if full
         MOV     R0, #&81                ; OS_Byte 129 (INKEY)
         MOV     R1, #0
         MOV     R2, #0                  ; time limit 0
@@ -2327,11 +2324,11 @@ trykeys_gotinternalkeycode
         Pull    "R0-R5"
 
         ; Page in correct task
-        CMP     handle, #0
-        BLE     %FT01
+        CMP     handle, #nullptr
+        BEQ     %FT01
         LDR     R14, [handle, #w_taskhandle]
         CMP     R14, #0
-        LDRLT   R14, menutaskhandle
+        LDRMI   R14, menutaskhandle
         Task    R14,, "KeyPressed"
 01
 
@@ -2393,8 +2390,8 @@ trykeys_gotinternalkeycode
 02      ; Examine caret state to determine what to do with keypress
         ADRL    R14, savedcaretdata
         LDMIA   R14, {R0-R5}
-        CMP     R0, #0
-        BLE     tryhotkeys              ; no input focus
+        CMP     R0, #nullptr
+        BEQ     tryhotkeys              ; no input focus
         CMP     R1, #nullptr
         BNE     processkey              ; wimp gets first bash at this one!
 
@@ -2444,13 +2441,13 @@ prepare_external_key_event
 02      LDRB    R0, [R5, #1]!
         STRB    R0, [R4], #1
         CMP     R5, R14
-        BLT     %BT02
+        BLO     %BT02
         ADD     sp, sp, #8
 
 01      LDR     R14, singletaskhandle
-        CMP     R14, #0
-        BLLE    topmost_window          ; if we're multitasking, get top window handle
-        STRLE   R0, hotkeyptr           ; and store it as the first hotkey window
+        CMP     R14, #nullptr
+        BLEQ    topmost_window          ; if we're multitasking, get top window handle
+        STREQ   R0, hotkeyptr           ; and store it as the first hotkey window
         EXIT                            ; leave flags as they are
 
 get_internal_keycode_from_buffer
@@ -2504,7 +2501,7 @@ get_internal_keycode_removefrombuffer
 01      LDRB    R0, [R2, R4]
         STRB    R0, [R2], #1            ; copy down
         CMP     R2, R1
-        BLT     %BT01
+        BLO     %BT01
 
         CMP     R6, #-1                 ; was it a malformed character?
         BEQ     get_internal_keycode_restartpoint  ; swallow it if so!
@@ -2555,8 +2552,8 @@ get_internal_keycode_removefrombuffer
  ]
 00
         LDR     handle,caretdata+0
-        CMP     handle,#0
-        BLE     %FT01                   ; still read character (may be hot!)
+        CMP     handle,#nullptr
+        BEQ     %FT01                   ; still read character (may be hot!)
 ;
         BL      checkhandle             ; check it hasn't been deleted!
         MOVVS   handle,#nullptr
@@ -2565,7 +2562,7 @@ get_internal_keycode_removefrombuffer
 ;
         LDR     R14,[handle,#w_taskhandle]
         CMP     R14,#0
-        LDRLT   R14,menutaskhandle
+        LDRMI   R14,menutaskhandle
 
         LDR     R14,[wsptr,R14]
         LDR     R14,[R14,#task_flagword]
@@ -2589,9 +2586,9 @@ get_internal_keycode_removefrombuffer
         ADDNE   R6,R6,#&100             ; add &100 to the value (unless 0)
 01
         LDR     R14,caretdata+0
-        CMP     R14,#0
-        LDRGT   R14,[handle,#w_taskhandle]
-        LDRLT   R14,menutaskhandle
+        CMP     R14,#nullptr
+        LDRNE   R14,[handle,#w_taskhandle]
+        LDREQ   R14,menutaskhandle
         Task    R14,,"KeyPressed"       ; page in correct task
 
         TEQ     R6,#&1B                 ; escape?
@@ -2620,17 +2617,17 @@ get_internal_keycode_removefrombuffer
 
 02      ADR     R14,caretdata
         LDMIA   R14,{R0-R5}
-        CMP     R0,#0
-        BLE     tryhotkeys              ; no input focus
+        CMP     R0,#nullptr
+        BEQ     tryhotkeys              ; no input focus
         CMP     R1,#nullptr
         BNE     processkey              ; wimp gets first bash at this one!
 
 keypressed
         STMIA   userblk,{R0-R6}         ; including the key value
         LDR     R14,singletaskhandle
-        CMP     R14,#0
-        BLLE    topmost_window
-        STRLE   R0,hotkeyptr
+        CMP     R14,#nullptr
+        BLEQ    topmost_window
+        STREQ   R0,hotkeyptr
 ;
 
         MOV     R0,#Key_Pressed         ; task handle already set up
@@ -2638,13 +2635,13 @@ keypressed
 
 tryhotkeys
         LDR     R14,singletaskhandle
-        CMP     R14,#0
+        CMP     R14,#nullptr
 
 ; Set hotkeyptr to topmost window
 
-        BLLE    topmost_window
-        STRLE   R0,hotkeyptr
-        BLLE    int_processkey          ; R6 = key code
+        BLEQ    topmost_window
+        STREQ   R0,hotkeyptr
+        BLEQ    int_processkey          ; R6 = key code
         B       repollwimp
 
 inkey0
@@ -2696,8 +2693,8 @@ trymenucursorkeys
         ADD     r7, r1, r1, LSL #1      ; r7 = selected item * 3 (also used later)
         ADD     r6, r5, r7, LSL #3      ; r6 -> selected menu item
         LDR     r1, [r6, #mi_submenu]   ; r1 -> sub-menu data block
-        CMP     r1, #0                  ; check for sub-menu/dbox
-        BLE     nothing
+        CMP     r1, r1, ASR #31         ; check for sub-menu/dbox
+        BEQ     nothing
         ADR     r14, menuhandles        ; get menu window handle
         LDR     handle, [r14, r4]
         BL      checkhandle
@@ -2919,8 +2916,7 @@ scanpollwords   Entry "R1-R4"
         LDR     R3,[LR,wsptr]           ; Read address of task data
         LDR     R3,[R3,#task_pollword]  ; Task pollword
         TST     R3,R0                   ; NE => consider this
-        BICNE   R3,R3,#&80000000        ; Reset hi-priority bit
-        LDRNE   R4,[R3]                 ; Read pollword
+        LDRNE   R4,[R3]                 ; Read pollword (bottom bit is irrelevant to zero-ness!)
         TEQNE   R4,#0                   ; NE => word non-zero!
         BEQ     %BT01                   ; Jump if not found
 
@@ -2928,6 +2924,7 @@ scanpollwords   Entry "R1-R4"
 
         Task    LR,,"Poll word"         ; preserves flags
         MOV     R0,#PollWord_NonZero    ; R0 = reason code
+        BIC     R3,R3,#1
         STMIA   userblk,{R3,R4}
 
         EXIT                            ; Returns NE
@@ -3046,11 +3043,11 @@ setwimpicon
 ;
         CMP     R4,#5                   ; icon 5 is really 3 icons
         BEQ     check_v_arrows
-        ADDGT   R4,R4,#2
+        ADDHI   R4,R4,#2
         CMP     R4,#7+2                 ; fudge!
         BEQ     check_h_arrows          ; icon 7 is also really 3 icons
       [ IconiseButton
-        ADDGT	R4,R4,#3		; and skip -13 (which is the border)
+        ADDHI	R4,R4,#3		; and skip -13 (which is the border)
       ]
 03
       [ BounceClose
@@ -3182,8 +3179,8 @@ wiconflags_release
     ]
 
 wimpaction
-        CMP     R3,#0                   ; is this a real window?
-        BLGT    pageinicontask_R3R4     ; takes note of iconbar
+        CMP     R3,#nullptr             ; is this a real window?
+        BLNE    pageinicontask_R3R4     ; takes note of iconbar
 
         TST     R2,#button_left:OR:button_right
         BEQ     trykeys                         ; menu not allowed here!
@@ -3732,7 +3729,7 @@ sendiconisemessages
         MOV     R14,R2                      ; Find first space.
 01      LDRB    R3,[R14],#1
         CMP     R3,#&20
-        BGT     %BT01
+        BHI     %BT01
 
 02      LDRB    R3,[R14]                    ; Go back to last '.'
         CMP     R14,R2
@@ -3745,17 +3742,17 @@ sendiconisemessages
       [ true
         LDRB    R3, [R14]
         CMP     R3, #&20
-        MOVLE   R14, R2   ; if we'd get a null string, then jump back to start
+        MOVLS   R14, R2   ; if we'd get a null string, then jump back to start
       ]
 
         MOV     R4,#ms_data+8
 03      LDRB    R3,[R14],#1
         CMP     R3,#&20
-        BLE     %FT04
+        BLS     %FT04
         STRB    R3,[R1,R4]
         ADD     R4,R4,#1
         CMP     R4,#27+ms_data
-        BLT     %BT03
+        BLO     %BT03
 
 04      MOV     R3,#0                      ; Store zero terminator.
         STRB    R3,[R1,R4]
@@ -4028,14 +4025,13 @@ SWIWimp_GetPointerInfo
         LDR     R2,mousebuttons
         BL      int_get_pointer_info
 
+        CMP     R4, #nullptr2
+        BNE     %FT01
 	LDR     R14,singletaskhandle            ; if single-tasking,
-	RSBS    R14,R14,#0
-	CMPLT   R4,#nullptr
-	MOVLT   R4,#nullptr                     ; don't confuse punter!
-
-        CMP     R4,#nullptr2                    ; if new task,
-        BLEQ    setwimpicon                     ; work out which icon it is
-;
+	CMP     R14,#nullptr
+	MOVNE   R4,#nullptr                     ; don't confuse punter!
+        BLEQ    setwimpicon                     ; if new task, work out which icon it is
+01
         LDR     R14,backwindowhandle
         TEQ     R3,R14
         LDRNE   R14,backwindow                  ; window -1 for either of these
@@ -4043,8 +4039,8 @@ SWIWimp_GetPointerInfo
         MOVEQ   R3,#nullptr
 ;
         LDR     R14,iconbarhandle
-        CMP     R14,#0
-        BLE     %FT01
+        CMP     R14,#nullptr
+        BEQ     %FT01
         TEQ     R3,R14
         MOVEQ   R3,#nullptr2                    ; return -2 for iconbar
 01
@@ -4269,7 +4265,7 @@ findwlp
         ADD     R2,R2,R4,ASL #i_shift           ; R3 --> end of list
 ficlp
         SUBS    R4,R4,#1
-        BLT     noficon                         ; no more left
+        BMI     noficon                         ; no more left
         SUB     R2,R2,#i_size                   ; point to current icon
 ;
         LDR     R14,[R2,#i_flags]

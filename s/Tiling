@@ -58,7 +58,7 @@ plotspritebackground
 
         LDR     R1,[handle,#w_areaCBptr]
         CMP     R1,#2
-        BLT     %FT3
+        BLO     %FT3
         MOV     R0,#24
         ORR     R0,R0,#256
         ADR     R2,plotsprite_tile1
@@ -105,12 +105,12 @@ plotspritebackground
         LDR     R2,tiling_sprite
         CMP     R2,#0
         BEQ     %FT4
-        LDRGT   R1,baseofsprites
-        BGT     %FT5
-        BLLT    findwimptilesprite
+        CMP     R2,#-1
+        LDRNE   R1,baseofsprites
+        BNE     %FT5
+        BLEQ    findwimptilesprite
         LDRVC   R1,baseofsprites
         BVC     %FT5
-        CLRV
 4
         SWI     XOS_WriteI+16
 
@@ -241,19 +241,19 @@ findwimptilesprite  Entry "R0-R1"
         MOV     R0,#1
         MOV     R14,R0,LSL R14
         MOV     R0,#0
-        CMP     R14,#9
-        MOVGT   R0,#"6"
+        CMP     R14,#8
+        MOVHI   R0,#"6"
         CMP     R14,#16
-        MOVGT   R0,#"2"
+        MOVHI   R0,#"2"
         Push    "R0"                            ; now got "2",0 or "6",0 on stack
         ADR     R2,plotsprite_tile1_
         LDMIA   R2,{R0-R1}
         Push    "R0-R1"                         ; now have "tile_1-?#",0 on stack
-        CMP     R14,#9
-        ADDLT   R0,R14,#"0"
-        MOVGT   R0,#"1"
-        CMPGT   R14,#16
-        MOVGT   R0,#"3"
+        CMP     R14,#8
+        ADDLS   R0,R14,#"0"
+        MOVHI   R0,#"1"
+        CMPHI   R14,#16
+        MOVHI   R0,#"3"
         STRB    R0,[sp,#7]
         BL      findwimpspritefordepth
 
@@ -278,10 +278,9 @@ findwimptilesprite  Entry "R0-R1"
         Push    "R2-R3"
 
         LDR     R2,tile_pixtable
-        BIC     R2,R2,#&80000000                ; incase cache invalidated before mode change
-        CMP     R2,#0
-        MOVGT   R0,#ModHandReason_Free
-        BLGT    XROS_Module
+        BICS    R2,R2,#1                        ; incase cache invalidated before mode change
+        MOVNE   R0,#ModHandReason_Free
+        BLNE    XROS_Module
 
         TEQ     R1,#0
 
@@ -356,7 +355,7 @@ tile_putsprite
         MOVEQ   R0,#SpriteReason_PutSpriteUserCoords
 
         LDRNE   R7,tile_temptab          ; -> translation table
-        TSTNE   R7,#&80000000
+        TSTNE   R7,#1
         BLNE    get_new_pixtable
 ;
         LDR     R1,thisCBptr
@@ -370,7 +369,7 @@ tile_putsprite
 
 get_new_pixtable Entry  "R0-R6"
 
-        BIC     R7,R7,#&80000000        ; now an address again
+        BIC     R7,R7,#1                ; now an address again
 
         MOV     R0,#0
         STR     R0,lengthflags
@@ -379,10 +378,9 @@ get_new_pixtable Entry  "R0-R6"
         TEQ     R0,R7
         BNE     %FT05
 
-        MOV     R2,R7
-        CMP     R2,#0
-        MOVGT   R0,#ModHandReason_Free
-        BLGT    XROS_Module
+        MOVS    R2,R7
+        MOVNE   R0,#ModHandReason_Free
+        BLNE    XROS_Module
 
         LDR     R7,pixtable_at
         MOV     R6,#0
@@ -395,10 +393,10 @@ get_new_pixtable Entry  "R0-R6"
 05
         ; if tile_temptab and tile_pixtable were different then we must have been
         ; tiling a window with a custom tile. Can't free it either. However, the
-        ; genereic table is probably stuffed as well.
+        ; generic table is probably stuffed as well.
 
         LDR     R7,tile_pixtable
-        ORR     R7,R7,#&80000000
+        ORR     R7,R7,#1
         STR     R7,tile_pixtable
 
         LDR     R7,pixtable_at

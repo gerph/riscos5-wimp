@@ -75,9 +75,9 @@ int_bget Entry "R1-R2"
         Debug   tmp,"int_bget: fileat, filesize, ptr:",R1,R2,R4
 
         CMP     R4,R2                   ; is the byte within this file
-        LDRLTB  R0,[R1,R4]              ; get a byte
-        ADDLT   R4,R4,#1
-        EXIT    LT                      ; and return if obtained
+        LDRLOB  R0,[R1,R4]              ; get a byte
+        ADDLO   R4,R4,#1
+        EXIT    LO                      ; and return if obtained
 
         MyXError TemplateEOF
         EXIT
@@ -116,7 +116,7 @@ int_gbpb Entry "R1"
         EXIT    EQ
 
         CMP     R4,R0                   ; have we reached the end of the file yet?
-        MyXError TemplateEOF, GE
+        MyXError TemplateEOF, HS
         EXIT    VS
 
         LDRB    R14,[R1,R4]
@@ -322,9 +322,9 @@ int_close_template
         LDR     R2,fileaddress
         CMP     R2,#0
 
-        BLGT    XROS_Module              ; release the RAM based object - ignoring errors!
-        MOVGT   R2,#0
-        STRGT   R2,fileaddress
+        BLNE    XROS_Module              ; release the RAM based object - ignoring errors!
+        MOVNE   R2,#0
+        STRNE   R2,fileaddress
 ;
       [ No32bitCode
         MOVS    PC,R1                   ; return back - restoring the flags
@@ -407,8 +407,9 @@ srchindex
 
         LDR     R4,tempiconblk          ; data offset in file
         LDR     R3,tempiconblk+4        ; data size
-        SUBS    R2,userblk,#0
-        BGT     %FT01
+        MOVS    R2,userblk
+        CMPNE   R2,#nullptr
+        BNE     %FT01
 
         LDR     R14,tempiconblk+8       ; is this a window?
         TEQ     R14,#1
@@ -428,32 +429,33 @@ srchindex
 ; unless object type = 1 (window), all data is put into the scratch block
 
         LDR     R14,tempiconblk+8       ; R14 = object type
-        CMP     userblk,#0
-        MOVGT   R8,#-1                  ; R8 < 0 => we're actually loading the data
-        LDRLE   userblk,tempiconblk+0   ; userblk = offset of data in file
-        LDRLE   R8,tempworkspace        ; R8 = number of icons
-        MOVLE   R9,#0                   ; R9 = total size of indirected data
-        LDRLE   R10,tempiconblk+4       ; R10 = total size of template entry
+        CMP     userblk,userblk,ASR #31
+        MOVNE   R8,#-1                  ; R8 =-1 => we're actually loading the data
+        LDREQ   userblk,tempiconblk+0   ; userblk = offset of data in file
+        LDREQ   R8,tempworkspace        ; R8 = number of icons
+        MOVEQ   R9,#0                   ; R9 = total size of indirected data
+        LDREQ   R10,tempiconblk+4       ; R10 = total size of template entry
 
-        ; LE => R14=1 (object type checked earlier)
+        ; EQ => R14=1 (object type checked earlier)
 
         TEQ     R14,#1                  ; if loading item, just leave now
         BNE     exittemplate
 
 ; process icons if this object is a window
-; R8 < 0 => userblk -> user buffer containing data, else
+; R8 = -1 => userblk -> user buffer containing data, else
 ; R8 = nicons => userblk = offset of data in file (we're counting it)
 
-        ADDVC   R1,userblk,#w_titleflags-w_cw0  ; R1 -> icon flags
-        ADDVC   R2,userblk,#w_title-w_cw0       ; R2 -> icon data
-        BLVC    templateicon
+        ADD     R1,userblk,#w_titleflags-w_cw0  ; R1 -> icon flags
+        ADD     R2,userblk,#w_title-w_cw0       ; R2 -> icon data
+        BL      templateicon
         BVS     exittemplate
 ;
         ADD     R14,userblk,#w_nicons-w_cw0
-        SUBS    R6,R8,#0                        ; if R8 < 0,
-        LDRLT   R6,[userblk,#w_nicons-w_cw0]    ; get nicons from block
+        MOV     R6,R8                           ; if R8 = -1,
+        CMP     R6,#-1
+        LDREQ   R6,[userblk,#w_nicons-w_cw0]    ; get nicons from block
         CMP     R6,#0
-        BLE     %FT01
+        BEQ     %FT01
 
         ADD     R7,userblk,#w_size-w_cw0
 doicons
@@ -465,16 +467,16 @@ doicons
         SUBS    R6,R6,#1
         BNE     doicons
 01
-        CMP     R8,#0                           ; R8 >= 0 => we're counting:
-        BGE     exittemplate_size               ; R9 = indirected data size, R10 = total size
+        CMP     R8,#-1                          ; R8 <> -1 => we're counting:
+        BNE     exittemplate_size               ; R9 = indirected data size, R10 = total size
 
 exittemplate
         LDR     R6,templateindex
 exittemplate2
         MOV     R1,#1
         BVS     %FT05
-        CMP     userblk,#0
-        STRGT   R1,[userblk,#64]       ; make sure window's sprite area is sensible
+        CMP     userblk,userblk,ASR #31
+        STRNE   R1,[userblk,#64]       ; make sure window's sprite area is sensible
         CLRV                            ; cmp sets V !!!!!
 05
         MOV     R1,userblk
@@ -494,7 +496,7 @@ exittemplate_size
 
 ; In    R1 --> flag word for icon
 ;       R2 --> data for icon (could be indirected)
-;       R8 < 0 => R1,R2 are file offsets (we're just counting the size required)
+;       R8 = -1 => R1,R2 are file offsets (we're just counting the size required)
 ;       R9 = current size of indirected data
 ; Out   R9 updated
 ;       R0,R1,R3 corrupted
@@ -502,16 +504,16 @@ exittemplate_size
 templateicon
         Push    "R2,R4,R7,LR"
 ;
-        CMP     R8,#0                   ; if just counting, ignore font stuff
-        BGE     counttemplateicon
+        CMP     R8,#-1                  ; if just counting, ignore font stuff
+        BNE     counttemplateicon
 ;
         LDR     R14,[R1]
         TST     R14,#if_fancyfont
         BEQ     tryindirected
 ;
         LDR     R14,userfontcounts
-        CMP     R14,#0
-        MyXError  WimpBadFonts,LE
+        CMP     R14,#-1
+        MyXError  WimpBadFonts,EQ
         Pull    "R2,R4,R7,PC",VS
 ;
 ; if we already know about this font, just change the handle
@@ -668,8 +670,8 @@ relocateitem
         ADD     R14,R7,R0
         LDR     R0,userfreeend
         CMP     R14,R0
-        STRLE   R14,userfreeptr         ; update free space ptr
-        MyXError  WimpTooBig,GT,L
+        STRLS   R14,userfreeptr         ; update free space ptr
+        MyXError  WimpTooBig,HI,L
         Pull    "R7,PC",VS
 
         LDR     R14,[R2]                ; old pointer to data

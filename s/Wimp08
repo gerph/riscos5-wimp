@@ -91,8 +91,8 @@ LoadWimp08s SETS ""
 ;-----------------------------------------------------------------------------
 
 ; Set/Read current Wimp slot size
-; Entry:  R0 = new 'current' slot size in bytes (<0 ==> no change)
-;         R1 = new 'next' slot size in bytes (<0 ==> no change)
+; Entry:  R0 = new 'current' slot size in bytes (-1 ==> no change)
+;         R1 = new 'next' slot size in bytes (-1 ==> no change)
 ; Exit:   R0 = actual 'current' slot size
 ;         R1 = actual 'next' slot size
 ;         R2 = total amount of free memory 'owned' by the Wimp
@@ -110,9 +110,9 @@ SWIWimp_SlotSize  ROUT
 ;
         MOV     R2,R1                   ; R2 = proposed slot size
         SWI     XOS_ReadMemMapInfo
-        CMP     R2,#0                   ; if -ve, just read current value
-        LDRLT   R3,slotsize
-        BLT     %FT01
+        CMP     R2,#-1                  ; if -ve, just read current value
+        LDREQ   R3,slotsize
+        BEQ     %FT01
         ADD     R2,R2,R0                ; R2 = (R2+size-1) DIV size * size
         SUB     R2,R2,#1
         DivRem  R3,R2,R0, R14
@@ -150,11 +150,12 @@ SWIWimp_SlotSize  ROUT
 ;
         CMP     R4,#-1                  ; R4 = proposed new current slot size
 ; under Medusa [freepool] has no meaning
+        BEQ     returnmemsize
         [ :LNOT:Medusa
-        LDRGT   R14,freepool
-        CMPGT   R14,#0
+        LDR     R14,freepool
+        CMP     R14,#0
+        BLT     returnmemsize
         ]
-        BLE     returnmemsize
 
 ;
         MOV     R0,#ApplicationSpaceSize
@@ -182,8 +183,8 @@ SWIWimp_SlotSize  ROUT
         BNE     returnmemsize           ; no current task (?)
 ;
         LDR     R2,[R5,#task_slotptr]   ; R2 --> slot (if any)
-        CMP     R2,#0
-        BLLE    getnullslot
+        CMP     R2,#nullptr
+        BLEQ    getnullslot
         STRVC   R2,[R5,#task_slotptr]
         BVS     ExitWimp                ; exit if unable to claim block
 ;
@@ -273,7 +274,7 @@ shrinkapp
 ;
         LDR     R14,[R5,#task_slotptr]
         CMP     R2,R14
-        BGE     %FT01
+        BEQ     %FT01
 ;
         MOV     R2,R14                  ; if null block, delete it!
         MOV     R0,#ModHandReason_Free
@@ -471,7 +472,7 @@ sendmemmessage
         Push    "R0-R6"
         MOVEQ   R0,#User_Message        ; don't bother getting reply
         MOVEQ   R1,sp
-        MOVEQ   R2,#0                   ; broadcast
+        MOVeQ   R2,#0                   ; broadcast
         BLEQ    int_sendmessage         ; fills in sender, myref
         ADD     sp,sp,#28
 
@@ -629,8 +630,8 @@ SWIWimp_ClaimFreeMemory  ROUT
         BNE     %FT01                   ; can't claim (nasty business going on)
 ;
         LDR     R14,freepool
-        CMP     R14,#0
-        BLE     %FT01                   ; can't claim (no free pool)
+        CMP     R14,#nullptr2
+        BHS     %FT01                   ; can't claim (no free pool)
 ;
         LDR     R3,orig_applicationspacesize
         LDR     R4,freepoolbase
@@ -866,7 +867,7 @@ onetaskcurrent
         MOV     R2,R1
         LDR     R3,taskhandle
         CMP     R8,R11                  ; do we need it paged in ?
-        BGE     %FT04
+        BHS     %FT04
         CMP     R3,R5
         ADDEQ   R8,R8,#ApplicationStart
         BEQ     %FT04
@@ -877,7 +878,7 @@ onetaskcurrent
         ADD     R8,R8,R0
 04
         CMP     R9,R11
-        BGE     %FT06
+        BHS     %FT06
         CMP     R3,R4
         ADDEQ   R9,R9,#ApplicationStart
         BEQ     %FT06
@@ -909,7 +910,7 @@ onetaskcurrent
         BEQ     wordcopy                ; word aligned, yipee!!!
 
         CMP     R8,R9
-        BGE     %FT02
+        BHS     %FT02
         ADD     R8,R8,R10
         ADD     R9,R9,R10
 01
@@ -945,7 +946,7 @@ onetaskcurrent
 
 wordcopy
         CMP     R8,R9
-        BGE     %FT02
+        BHS     %FT02
         ADD     R8,R8,R10
         ADD     R9,R9,R10
 01
@@ -1084,7 +1085,7 @@ findpages       ROUT
 
         Pull    "R1-R11,PC"
 01
-        ]
+        |
 ;
 ; if application space in use, we can't construct a free pool
 ; but we must still read orig_memorylimit and orig_applicationspacesize
@@ -1145,6 +1146,8 @@ findpages       ROUT
 
         Pull    "R1-R11,PC"
 
+        ]
+
 
 ; In    R1 = application space size (one after end of free pool)
 ;       R2 -> free pool page table
@@ -1168,7 +1171,7 @@ findfreepool    ROUT
         CMP     R1,R3
         STMHSIA R2!,{R0,R1,R14}         ; page no, address, access (undefined)
         ADDHS   R4,R4,#1
-        BGE     %BT01
+        BHS     %BT01
         STR     R4,freepoolpages
         MOV     R14,#-1
         STR     R14,[R2]                ; terminator
@@ -1266,8 +1269,8 @@ restorepages    ROUT
         ]
 ;                                       ; just add to the pages present
         LDR     R6,freepool
-        CMP     R6,#0
-        BLE     go_restorememlimit      ; NB: orig_ values MUST BE CORRECT!
+        CMP     R6,#nullptr2
+        BHS     go_restorememlimit      ; NB: orig_ values MUST BE CORRECT!
 ;
         MOV     R0,#MemoryLimit
         MOV     R1,#0
@@ -1410,7 +1413,7 @@ nomemoryinslot2
         STR     R0,[R2],#4              ; set protection level.
         ADD     R3,R3,lr
         CMP     R2,R4
-        BLT     %BT04
+        BLO     %BT04
         MOV     R0,#-1
         STR     R0,[R2]
         Pull    "R0"
@@ -1556,11 +1559,11 @@ deallocateslot  ROUT
         LDR     R14,taskhandle
         LDR     R1,[wsptr,R14]          ; R1 --> task block
         LDR     R2,[R1,#task_slotptr]
-        CMP     R2,#0
-        MOVGT   R14,#nullptr
-        STRGT   R14,[R1,#task_slotptr]
+        CMP     R2,#nullptr
+        MOVNE   R14,#nullptr
+        STRNE   R14,[R1,#task_slotptr]
         [ Medusa
-        BLE     %FT03
+        BEQ     %FT03
 01
 ; first find out how much memory is really in the slot
         Push    "R2-R3"
@@ -1590,7 +1593,7 @@ deallocateslot  ROUT
         BL     XROS_Module              ; free the slot
 03
         |
-        BLGT    deallocate              ; R2 --> block to deallocate from
+        BLNE    deallocate              ; R2 --> block to deallocate from
         ]
 ;
         CLRV
@@ -1605,8 +1608,8 @@ deallocateslot  ROUT
 deallocate      ROUT
         Push    "LR"
         [ Medusa
-        CMP     R2,#0
-        Pull    "PC",LE                 ; return if invalid slot pointer
+        CMP     R2,#nullptr
+        Pull    "PC",EQ                 ; return if invalid slot pointer
         Push    "R0-R4"
         BL      mapslotout              ; map current task out of the way
         LDR     R0,pagesize
@@ -1646,12 +1649,13 @@ deallocate      ROUT
         BL      mapslotin               ; put current task back
         Pull    "R0-R4,PC"
 50
-        ]
+        |
         BL      maptofreepool
-        CMP     R2,#0
-        MOVGT   R0,#ModHandReason_Free
-        BLGT   XROS_Module
+        CMP     R2,#nullptr
+        MOVNE   R0,#ModHandReason_Free
+        BLNE   XROS_Module
         Pull    "PC"
+        ]
 
 ;
 ; Entry:  R2 --> slot block
@@ -1663,8 +1667,8 @@ deallocate      ROUT
 maptofreepool   ROUT
         Push    "R1-R7,LR"
 ;
-        CMP     R2,#0
-        Pull    "R1-R7,PC",LE           ; no block!
+        CMP     R2,#nullptr
+        Pull    "R1-R7,PC",EQ           ; no block!
 ;
 
         LDR     R6,freepool
@@ -1677,11 +1681,11 @@ maptofreepool   ROUT
         LDR     R4,freepoolbase         ; R4 -> next address
         MOV     R5,#2                   ; R5 = protection level
 01      LDR     R3,[R2],#12             ; R3 = page number
-        CMP     R3,#0
-        SUBGE   R4,R4,R1
-        STMGEIA R6!,{R3,R4,R5}          ; page number, address, protection level
-        ADDGE   R7,R7,#1
-        BGE     %BT01
+        CMP     R3,#nullptr
+        SUBNE   R4,R4,R1
+        STMNEIA R6!,{R3,R4,R5}          ; page number, address, protection level
+        ADDNE   R7,R7,#1
+        BNE     %BT01
 
         STR     R4,freepoolbase
         STR     R7,freepoolpages
@@ -1709,8 +1713,8 @@ mapslotin       ROUT
         Pull    "R1-R4,PC",LE           ; task is dead (shouldn't happen)
 ;
         LDR     R0,[R1,#task_slotptr]
-        CMP     R0,#0                   ; no slot allocated
-        BLGT    mapin                   ; (corrupts R2)
+        CMP     R0,#nullptr              ; no slot allocated
+        BLNE    mapin                   ; (corrupts R2)
 ;
         LDR     R14,taskhandle
         LDR     R4,[wsptr,R14]          ; NB task cannot be dead
@@ -1785,8 +1789,8 @@ mapslotout      ROUT
         BCC     %BT01
 ;
         LDR     R0,[R6,#task_slotptr]
-        CMP     R0,#0                   ; R0 --> slot block
-        BLGT    mapout                  ; NB do this afterwards!
+        CMP     R0,#nullptr             ; R0 --> slot block
+        BLNE    mapout                  ; NB do this afterwards!
 ;
         Pull    "R1-R6,PC"
 
@@ -1852,11 +1856,11 @@ WimpSlot_Code   ROUT
 ;
         LDR     R1,[sp,#vec_min]
         CMP     R1,#0
-        BLE     %FT01
+        BEQ     %FT01
         BL      getminmax               ; R0 = min memory
         BVS     %FT99
         CMP     R0,R3
-        BLE     %FT01
+        BLS     %FT01
 ;
         Push    "R0"                    ; R0 = new current slot size
         MOV     R1,#-1                  ; leave next slot alone
@@ -1864,21 +1868,21 @@ WimpSlot_Code   ROUT
         Pull    "R1"
         BVS     %FT99
         CMP     R0,R1                   ; R0=actual size, R1=required size
-        BLT     err_notenoughmemory
+        BLO     err_notenoughmemory
         MOV     R3,R0                   ; R3 = new amount of memory
 01
         LDR     R1,[sp,#vec_max]
         CMP     R1,#0
-        BLE     %FT02
+        BEQ     %FT02
         BL      getminmax               ; R0 = max memory
         BVS     %FT99
         CMP     R0,R3
-        MOVLT   R1,#-1                  ; leave next slot alone
-        SWILT   XWimp_SlotSize
+        MOVLO   R1,#-1                  ; leave next slot alone
+        SWILO   XWimp_SlotSize
 02
         LDR     R1,[sp,#vec_next]
         CMP     R1,#0
-        BLE     %FT99
+        BEQ     %FT99
         BL      getminmax               ; R0 = new next slot size
         MOVVC   R1,R0
         MOVVC   R0,#-1                  ; leave current slot alone
@@ -1941,11 +1945,17 @@ getminmax       ROUT
         SWI     XOS_ReadUnsigned
         Pull    "R1-R3,PC",VS
 ;
-        LDRB    R3,[R1]                 ; if terminator is "K" or "k",
+        LDRB    R3,[R1]
         ASCII_UpperCase R3, R14
-        TEQ     R3,#"K"
+        TEQ     R3,#"K"                 ; if terminator is "K" or "k",
         ADDEQ   R1,R1,#1
         MOVEQ   R2,R2,LSL #10           ; multiply by 1024
+        TEQ     R3,#"M"                 ; if terminator is "M" or "m",
+        ADDEQ   R1,R1,#1
+        MOVEQ   R2,R2,LSL #20           ; multiply by 1048576
+        TEQ     R3,#"G"                 ; if terminator is "G" or "g",
+        ADDEQ   R1,R1,#1
+        MOVEQ   R2,R2,LSL #30           ; multiply by 1073741824
 ;
         LDRB    R14,[R1]                ; check terminator
         RSBS    R14,R14,#" "+1          ; ensure GT set if OK
@@ -2073,8 +2083,8 @@ My_ChangeDynamic  ROUT
 ; if freepool>0, the Wimp MUST be in control
 ;
         LDR     R14,freepool
-        CMP     R14,#0
-        BLE     goto_osentry
+        CMP     R14,#nullptr2
+        BHS     goto_osentry
 ;
         MOV     R14,#IRQsema            ; if in IRQ, forget it!
         LDR     R14,[R14]
@@ -2181,8 +2191,8 @@ rackupslots     ROUT
         TEQNE   R14,#task_unused
         LDRNE   R0,[R14,#task_slotptr]
         MOVEQ   R0,#nullptr
-        CMP     R0,#0
-        BLGT    mapslot                 ; updates [R0..], R2
+        CMP     R0,#nullptr
+        BLNE    mapslot                 ; updates [R0..], R2
         SUBS    R4,R4,#1
         BNE     %BT01
 ;
@@ -2207,8 +2217,8 @@ unrackslots     ROUT
         TEQNE   R14,#task_unused
         LDRNE   R0,[R14,#task_slotptr]
         MOVEQ   R0,#nullptr
-        CMP     R0,#0
-        BLGT    mapout
+        CMP     R0,#nullptr
+        BLNE    mapout
         SUBS    R4,R4,#1
         BNE     %BT01
 ;
@@ -2326,8 +2336,9 @@ servicememory   ROUT
         Pull    "R0-R3,PC",EQ
 ;
         LDR     R14,freepool            ; is there a free pool?
+        CMP     R14,#nullptr2
+        Pull    "R0-R3,PC",EQ           ; freepool=-2 ==> OK (not running)
         CMP     R14,#nullptr
-        Pull    "R0-R3,PC",LT           ; freepool=-2 ==> OK (not running)
         LDRNEB  R14,memoryOK            ; if not remapped already, stop this!
         TSTNE   R14,#mem_remapped       ; (usually because memory claimed)
         BEQ     serviceclaim
@@ -2371,9 +2382,9 @@ medusaservicemem
         LDR     R14,pendingtask
         MOVS    R0,R14,ASR #31
         LDREQ   R0,[R14,#task_slotptr]
-        CMP     R0,#0
-        SWIGT   XOS_FindMemMapEntries
-        BGT     %FT05
+        CMP     R0,#nullptr
+        SWINE   XOS_FindMemMapEntries
+        BNE     %FT05
 
         LDR     R14,taskhandle
         CMP     R14,#0
@@ -2382,8 +2393,8 @@ medusaservicemem
         LDR     R14,[wsptr,R14]
         MOVS    R0,R14,ASR #31
         LDREQ   R0,[R14,#task_slotptr]
-        CMP     R0,#0
-        SWIGT   XOS_FindMemMapEntries
+        CMP     R0,#nullptr
+        SWINE   XOS_FindMemMapEntries
 05
         Pull    "R0-R3,PC"
       ]
@@ -2417,9 +2428,9 @@ servicememorymoved  ROUT
         TEQP    PC,#SVC_mode            ; enable interrupts (bug in MOS)
 ;
         LDR     R14,freepool            ; no messing about if no free pool
-        CMP     R14,#nullptr
-        Pull    "R0-R7,R10-R11,PC",LT   ; Wimp not involved at all
-        BNE     %FT01                   ; Wimp has a free pool to maintain
+        CMP     R14,#nullptr2
+        Pull    "R0-R7,R10-R11,PC",EQ   ; Wimp not involved at all
+        BLO     %FT01                   ; Wimp has a free pool to maintain
 ;
         LDR     R0,taskhandle                ;; Wimp 1.89o onwards
         LDR     R14,inithandle               ;;
@@ -2456,8 +2467,8 @@ servicememorymoved  ROUT
         LDR     R14,[R5],#4
         MOVS    R0,R14,ASR #31          ; R0 = 0 (OK) or -1 (no slot)
         LDREQ   R0,[R14,#task_slotptr]
-        CMP     R0,#0
-        SWIGT   XOS_FindMemMapEntries   ; R10 --> new map, R0 --> slot
+        CMP     R0,#nullptr
+        SWINE   XOS_FindMemMapEntries   ; R10 --> new map, R0 --> slot
         SUBS    R4,R4,#1                ; clears V
         BNE     %BT01
 ;
@@ -2466,8 +2477,8 @@ servicememorymoved  ROUT
         LDR     R14,pendingtask         ;; this was missing in Risc OS 2.00
         MOVS    R0,R14,ASR #31          ;;
         LDREQ   R0,[R14,#task_slotptr]  ;; essential for screen remapping
-        CMP     R0,#0                   ;;
-        SWIGT   XOS_FindMemMapEntries   ;;
+        CMP     R0,#nullptr             ;;
+        SWINE   XOS_FindMemMapEntries   ;;
 ;
 ; restore the current orig_applicationspacesize/memorylimit for this slot
 ;

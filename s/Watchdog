@@ -253,15 +253,15 @@ watchdognext
         LDR     R0,errorstack-8
         CMP     R0,#&8000               ; were we in a sprite ?
 
-        Pull    "R0-R7" ,LT
+        Pull    "R0-R7" ,LO
 
-        SWILT   OS_Exit                 ; can safely exit
+        SWILO   OS_Exit                 ; can safely exit
         LDR     R14,orig_applicationspacesize
         CMP     R0,R14
 
-        Pull    "R0-R7",GT
+        Pull    "R0-R7",HS
 
-        SWIGT   OS_Exit                 ; outside app space
+        SWIHS   OS_Exit                 ; outside app space
 
         MOV     R0,#SpriteReason_SwitchOutputToSprite
         MOV     R1,#0

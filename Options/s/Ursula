@@ -16,8 +16,6 @@
 ; Wimp options for an Ursula build of the Window Manager
 ;
 
-module_postfix	SETS	" Ursula"
-
         Option  ServiceCallTable,       true                    ; Add Ursula kernel Service Call table
         Option  ChocolateScreen,        true                    ; Clean cached screen after redraw loops
         Option  ShrinkableAreas,        true                    ; Support Shrinkable Dynamic Areas
@@ -37,5 +35,7 @@ module_postfix	SETS	" Ursula"
         Option  PushBothBars,           true                    ; Push in both scrollbars on adjust-drags
 
         ASSERT  International_Help <> 0
+
+DefaultNextSlot SETA 1024*1024
 
         END

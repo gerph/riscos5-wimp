@@ -50,8 +50,8 @@ addtoiconbar
 
 ; work out whereabouts in the list to put the new icon
 
-        CMP     handle, #-1-iconbartabsize
-        MyXError  WimpBadHandle, LE, L
+        CMN     handle, #iconbartabsize
+        MyXError  WimpBadHandle, MI, L
         BVS     ExitWimp
 
         ADRL    R14,iconbartab-1
@@ -71,8 +71,8 @@ addwithpriority                         ; R0 = priority of icon to add
         ADD     R1,R7,#icd_list-icb_link
 01
         LDR     R4,[R1,#icb_link]       ; R4 -> next icon block
-        CMP     R4,#0
-        BLE     %FT02
+        CMP     R4,#nullptr
+        BEQ     %FT02
         LDR     R3,[R4,#icb_priority]
         Debug   icb,"Iconblk, priority, newpriority:",R4,R3,R0
         CMP     R0,R3
@@ -85,8 +85,8 @@ addwithpriority                         ; R0 = priority of icon to add
 
 gofindit
         MOVS    R4,R0                   ; R4 = icon handle to open next to
-        MOVLT   R0,#WimpPriority_Maximum
-        BLT     addwithpriority
+        MOVMI   R0,#WimpPriority_Maximum
+        BMI     addwithpriority
 
         MOV     R3,R7                   ; R3 -> default end to add to
         BL      findicon                ; R1 -> previous, R2 -> current, R7 -> left/right head pointer
@@ -316,8 +316,9 @@ wimptempfname   DCB     "WindowManager:Templates",0
 openiconbar Entry   "R1-R9,R11"
 
         LDR     R0,iconbarhandle
-        SUBS    handle,R0,#0
-        EXIT    LE
+        CMP     R0,#nullptr
+        EXIT    EQ
+        MOV     handle,R0
         BL      checkhandle
         EXIT    VS
 
@@ -415,10 +416,10 @@ int_removefromiconbar
         Pull    "R1-R7,PC",PL
 ;
         LDR     R0,iconbarhandle
-        CMP     R0,#0
-        MOVGT   R14,#nullptr            ; kill off iconbar if empty
-        STRGT   R14,iconbarhandle
-        BLGT    int_delete_window
+        CMP     R0,#nullptr
+        MOVNE   R14,#nullptr            ; kill off iconbar if empty
+        STRNE   R14,iconbarhandle
+        BLNE    int_delete_window
 ;
         Pull    "R1-R7,PC"
 
@@ -446,14 +447,17 @@ tryfindicon
         ADD     R1,R7,#icd_list-icb_link
 01
         LDR     R2,[R1,#icb_link]
-        CMP     R2,#0
-        Pull    "PC",LT                 ; not found (Z unset)
+        CMP     R2,#nullptr
+        BEQ     %FT02
         LDR     R14,[R2,#icb_iconhandle]
         TEQ     R14,R4
         MOVNE   R1,R2
         BNE     %BT01
 ;
         Pull    "PC"                    ; found (Z set)
+02
+        TEQ     R2,#0
+        Pull    "PC"                    ; not found (Z unset)
 
 
 ;
@@ -475,16 +479,16 @@ recalcposns
         MOV     x0,#0
         LDR     R1,[R7,#icd_list]
 01
-        CMP     R1,#0
-        LDRGT   R2,[R1,#icb_iconhandle]
-        ADDGT   R14,handle,R2,LSL #i_shift
-        LDRGT   cx0,[R14,#i_bbx0]
-        LDRGT   cx1,[R14,#i_bbx1]
-        SUBGT   cx1,cx1,cx0
-        ADDGT   x0,x0,#iconbargap       ; allow for gap between icons
-        ADDGT   x0,x0,cx1               ; plus width of icon itself
-        LDRGT   R1,[R1,#icb_link]
-        BGT     %BT01
+        CMP     R1,#nullptr
+        LDRNE   R2,[R1,#icb_iconhandle]
+        ADDNE   R14,handle,R2,LSL #i_shift
+        LDRNE   cx0,[R14,#i_bbx0]
+        LDRNE   cx1,[R14,#i_bbx1]
+        SUBNE   cx1,cx1,cx0
+        ADDNE   x0,x0,#iconbargap       ; allow for gap between icons
+        ADDNE   x0,x0,cx1               ; plus width of icon itself
+        LDRNE   R1,[R1,#icb_link]
+        BNE     %BT01
 ;
         STR     x0,[R7,#icd_width]
 ;
@@ -536,8 +540,8 @@ startinmiddle
 allocateicons
         LDR     R2,[R7,#icd_list]
 01
-        CMP     R2,#0
-        BLT     doneicons
+        CMP     R2,#nullptr
+        BEQ     doneicons
 ;
         LDR     R3,[R2,#icb_iconhandle]
         ADD     R14,handle,R3,LSL #i_shift
@@ -611,8 +615,8 @@ resizeiconbaricons
         MOV     R0,#0
         STRB    R0,iconbar_needs_rs
         LDR     handle,iconbarhandle
-        CMP     handle,#1
-        Pull    "R0-R5,R7,handle,userblk,PC",LT
+        CMP     handle,#nullptr
+        Pull    "R0-R5,R7,handle,userblk,PC",EQ
         Abs     handle,handle
         LDR     R5,[handle,#w_icons]
         LDR     R3,[handle,#w_nicons]
@@ -634,10 +638,10 @@ resizeicons_loop
         LDR     R1,[R1]
         LDR     R0,[R2,#icb_taskhandle]
         CMP     R0,#0
-        BLT     %FT05
+        BMI     %FT05
         LDR     R14,orig_applicationspacesize
         CMP     R14,R1
-        BLGT    mapslotinout
+        BLHI    mapslotinout
 ; so that indirected data is ok. Now R1-> text
         Push    "R2,R3"
         MOV     R2,#"X"
@@ -656,7 +660,7 @@ resizeicons_loop
         Pull    "R2"
         LDR     R1,[R2,#icb_defwidth]
         CMP     R0,R1
-        MOVGT   R1,R0
+        MOVHI   R1,R0
         LDR     R0,[R5,#i_bbx0]
         ADD     R1,R0,R1
         STR     R1,[R5,#i_bbx1]                 ; update width if needed
@@ -675,7 +679,7 @@ resizeicons_next
 
         Pull    "R0"
         CMP     R0,#0
-        BLGT    mapslotinout
+        BLPL    mapslotinout
 
         Pull    "R0-R5,R7,handle,userblk,PC"
 
@@ -689,7 +693,7 @@ mapslotinout
         BNE     %FT01
         LDR     R0,[R0,#task_slotptr]
         CMP     R0,#-1
-        BLGT    mapout
+        BLNE    mapout
 01
         Pull    "R0"
         LDR     R14,=&ffff
@@ -700,7 +704,7 @@ mapslotinout
         Pull    "R1-R2,PC",NE
         LDR     R0,[R0,#task_slotptr]
         CMP     R0,#-1
-        BLGT    mapin
+        BLNE    mapin
         Pull    "R1-R2,PC"
         ]
 

@@ -101,7 +101,7 @@ int_set_caret_position TraceL sc
         MOV     R14,#0
         STR     R14,caretdata+24
         CMP     R0,#nullptr             ; any window selected?
-        BLE     notwindow1              ; if not, caretscrollx must = 0
+        BEQ     notwindow1              ; if not, caretscrollx must = 0
         CMP     R1,#0
         BLT     noticon1                ; this isn't an icon
         STR     R6,caretdata+24         ; that value was indeed valid
@@ -150,8 +150,8 @@ notwindow1 TraceL sc
 
 ; decide whether we're going into an icon, or if this is a 'user caret'
 
-        CMP     R0,#0           ; CLR V ; no caret at all
-        BLE     notwindow2
+        CMP     R0,#nullptr     ; CLR V ; no caret at all
+        BEQ     notwindow2
         CMP     R1,#0
         BLT     noticon2
 
@@ -643,8 +643,9 @@ clickonwriteable
 ;-----------------------------------------------------------------------------
 
 findcaret TraceL sc
-        CMP     R0,#1
-        CMPGE   R1,#0
+        CMP     R0,#nullptr
+        MOVEQ   PC,LR
+        CMP     R1,#0
         MOVLT   PC,LR                           ; can't do anything with this
 
         Push    "R0-R3,LR"                      ; save window/icon handles etc.
@@ -747,9 +748,10 @@ findcaret TraceL sc
 
 
 shrinkcaret
-        CMP     R0,#0                   ; forget it if not inside an icon
-        CMPGT   R1,#-1
-        MOVLE   PC,LR
+        CMP     R0,#nullptr             ; forget it if not inside an icon
+        MOVEQ   PC,LR
+        CMP     R1,#0
+        MOVLT   PC,LR
 
         Push    "y0,y1,LR"
 
@@ -1020,8 +1022,9 @@ setcaretcoords TraceL sc
         TraceD  sc, R5
         TraceNL sc
 
-        CMP     R0,#1                   ; can't do it if no icon
-        CMPGE   R1,#0
+        CMP     R0,#nullptr             ; can't do it if no icon
+        MOVEQ   PC,LR
+        CMP     R1,#0
         MOVLT   PC,LR
 
         Push    "LR"
@@ -1315,8 +1318,8 @@ int_processkey
       ]  ; not needed, because we won't be calling WriteableKey directly any more
 
         LDR     R14,singletaskhandle    ; don't muck about if single task
-        CMP     R14,#0
-        BGT     defaultkey
+        CMP     R14,#nullptr
+        BNE     defaultkey
 
         LDR     R14,hotkeyptr
         Debug   key,"HotKeyPtr",R14
@@ -1335,17 +1338,17 @@ int_processkey
         ; This also provides the advantage that Wimp_ProcessKey 13 can activate writable menu items at last!
         CMP     R6, #0
         CMPNE   R6, #&100
-        MOVLT   R0, #1
-        MOVGE   R0, #2
-        ANDGE   R5, R6, #&FF
-        MOVGE   R6, #0
+        MOVLO   R0, #1
+        MOVHS   R0, #2
+        ANDHS   R5, R6, #&FF
+        MOVHS   R6, #0
         ; R0 = number of bytes to insert into keyprocess_buffer
         ; R6 = first byte
         ; R5 = second byte (if applicable)
         LDRB    R3, keyprocess_buflen
         RSB     R4, R3, #?keyprocess_buffer  ; R4 = space in buffer
         CMP     R4, R0
-        Pull    "R1-R6,handle,PC", LT   ; bail out if it won't fit
+        Pull    "R1-R6,handle,PC", LO   ; bail out if it won't fit
 
         ADR     R4, keyprocess_buffer
         ADD     R4, R4, R3              ; -> position to insert byte(s) at
@@ -1358,13 +1361,14 @@ int_processkey
 
       |
 
-        SUBS    handle,R0,#0
+        MOV     handle,R0
+        CMP     handle,#nullptr
         BL      topmost_window
         STR     R0,hotkeyptr
-        BLE     sendhotkey              ; if no input focus, just try hot keys
+        BEQ     sendhotkey              ; if no input focus, just try hot keys
 
-        CMP     R1,#nullptr
-        BLE     sendkey                 ; not in a writable icon
+        CMP     R1,#0
+        BLT     sendkey                 ; not in a writable icon
 
         MOV     R0,handle
         BL      WriteableKey            ; R0-R5 set up on entry
@@ -1537,8 +1541,8 @@ defaultkey
         BNE     %FT01
 
         LDR     handle,iconbarhandle
-        CMP     handle,#0
-        BLE     %FT01
+        CMP     handle,#nullptr
+        BEQ     %FT01
 
         BL      checkhandle             ; handle -> window block
       [ PoppingIconBar :LAND: :LNOT: OldStyleIconBar
@@ -1580,11 +1584,14 @@ defaultkey
 ; if caret is in a writable icon, expand soft key
 
         LDR     R14,caretdata+0         ; all we can do now is fn key expansion
-        CMP     R14,#0                  ; (if the caret is in a writable icon)
-        LDRGT   R14,caretdata+4
-        CMPGT   R14,#nullptr
-        Pull    "R1-R6,handle,PC",LE
-
+        CMP     R14,#nullptr            ; (if the caret is in a writable icon)
+        BEQ     %FT01
+        LDR     R14,caretdata+4
+        CMP     R14,#0
+        BGE     %FT02
+01
+        Pull    "R1-R6,handle,PC"
+02
 fnkeynamelen    *       8               ; must be a multiple of 4
 fnkeyexplen     *       256             ; must be a multiple of 4
 
@@ -1931,7 +1938,7 @@ nextfield Entry "R0-R6"
 10
         ADD     R1,R1,#1                        ; advance to the next field
         CMP     R1,R3
-        BLT     %FT20                           ; if still valid then ignore wrap checks
+        BLO     %FT20                           ; if still valid then ignore wrap checks
 
         TST     R2,#findfield_nowrap
         EXIT    NE                              ; if not allowed to wrap then exit
@@ -1943,7 +1950,7 @@ nextfield Entry "R0-R6"
 ;        MOV     R4,R14,LSR #ib_buttontype
 
         CMP     R4,#14 :SHL: ib_buttontype      ; if >= 14 then is editable so we have found one
-        BLT     %BT10                           ; if not then we need to loop back again
+        BLO     %BT10                           ; if not then we need to loop back again
 
         AND     R4,R14,#if_esg2
         TEQ     R4,R6                           ; same esg?
@@ -1978,7 +1985,7 @@ movecarettofield ROUT
 10
         LDRB    R6,[R4],#1
         CMP     R6,#32                          ; is the character valid
-        BGE     %BT10                           ; looping whilst it is
+        BHS     %BT10                           ; looping whilst it is
 
         SUB     R5,R4,R5                        ; calculate the length of the string
         SUB     R5,R5,#1                        ; removing the terminating charactor
@@ -1988,7 +1995,7 @@ movecarettofield ROUT
 
         LDR     R4,caretdata+5*4
         CMP     R4,R5                           ; truncate the caret posn
-        MOVLT   R5,R4
+        MOVLO   R5,R4
 20
         MOV     R4,#-1
         LDR     R0,caretdata
@@ -2027,7 +2034,7 @@ prevfield ALTENTRY
 ;        MOV     R4,R14,LSR #ib_buttontype
 
         CMP     R4,#14 :SHL: ib_buttontype      ; if >= 14 then is editable so we have found one
-        BLT     %BT10                           ; if not then we need to loop back again
+        BLO     %BT10                           ; if not then we need to loop back again
 
         AND     R4,R14,#if_esg2
         TEQ     R4,R6                           ; same esg?
@@ -2066,12 +2073,12 @@ isachar
 01      ADD     R0, R2, R7
         SUB     R0, R0, R1              ; R0 = space left in buffer
         CMP     R0, R4                  ; would the character fit?
-        BLT     exitprocess
+        BLO     exitprocess
 
         ; Check character count
         Push    "R1-R3,R6"
-        CMP     R3, #1                  ; is there a validation string?
-        BLT     %FT04
+        CMP     R3, R3, ASR #31         ; is there a validation string?
+        BEQ     %FT04
         MOV     R2, #WimpValidation_CharLimit  ; find "U" command, if any
         BL      findcommand
         BNE     %FT04
@@ -2168,8 +2175,8 @@ donechar
 exitprocess
         ADRL    R3,savedvalidation
         LDR     R3,[R3]
-        CMP     R3,#1
-        BLT     exitprocessnoreason     ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     exitprocessnoreason     ; No validation string
 
         MOV     R2,#WimpValidation_Key
         BL      findcommand             ; No "K" command
@@ -2262,8 +2269,8 @@ rdicend
 
 isreturn
         Push    "R1-R7"
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT02                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2279,6 +2286,8 @@ isreturn
         BNE     passbacktouser
         Debug   val,"Return processed"
         B       exitprocess
+02      CMP     pc,#0                   ; clear Z
+        B       %BT01
 
 downarrow
         Push    "R1-R7"                 ; balance with Pull in checkmenuupdown
@@ -2286,8 +2295,8 @@ downarrow
         MOV     r6, #138
         BL      checkmenuupdown         ; will not return if key handled
  ]
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT02                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2304,6 +2313,8 @@ downarrow
         BNE     passbacktouser
         Debug   val,"Down arrow processed"
         B       exitprocess
+02      CMP     pc,#0                   ; clear Z
+        B       %BT01
 
 uparrow
         Push    "R1-R7"                 ; balance with Pull in checkmenuupdown
@@ -2311,8 +2322,8 @@ uparrow
         MOV     r6, #139
         BL      checkmenuupdown         ; will not return if key handled
  ]
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT02                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2329,6 +2340,8 @@ uparrow
         BNE     passbacktouser
         Debug   val,"Up arrow processed"
         B       exitprocess
+02      CMP     pc,#0                   ; clear Z
+        B       %BT01
 
  [ KeyboardMenus
 checkmenuupdown
@@ -2354,8 +2367,8 @@ checkmenuupdown
 
 shifttab
         Push    "R1-R7"
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT01                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2373,8 +2386,8 @@ shifttab
         B       exitprocess
 tab
         Push    "R1-R7"
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT01                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2435,8 +2448,8 @@ dellp   LDRB    R0,[R2,#1]              ; copy down
         BL      int_donechar
         LDMIA   SP,{R0-R6}
         Debug   val,"donechar"
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT01                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2493,8 +2506,8 @@ dellp2  LDRB    R0,[R2,#1]              ; copy down
         MOV     R6,#0                   ; no movement
         BL      int_donechar
         LDMIA   SP,{R0-R6}
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT01                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2528,8 +2541,8 @@ dellp3
         MOV     R6,#0                   ; no movement
         BL      int_donechar
         LDMIA   SP,{R0-R6}
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT01                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2566,8 +2579,8 @@ ctrlcopy
         Push    "R0-R5"
         BL      int_donechar            ; R6 set up earlier
         LDMIA   SP,{R0-R6}
-        CMP     R3,#1
-        BLT     %FT01                   ; No validation string
+        CMP     R3,R3,ASR #31
+        BEQ     %FT01                   ; No validation string
         MOV     R2,#WimpValidation_Key
         BL      findcommand
         BNE     %FT01                   ; No "K" command
@@ -2591,7 +2604,7 @@ isleftarrow
 int_isleftarrow
     [ UTF8
         MOVS    R6, R5                  ; if already at start, don't try to move caret left
-        BLE     %FT01
+        BEQ     %FT01
         MOV     R7, R2                  ; remember start of buffer
         ADD     R2, R2, R5
         BL      skipcharL
@@ -2901,9 +2914,9 @@ convert_UCS4_to_UTF8
         Entry   "R0,R1,R5"
         ; Is it ASCII?
         CMP     R6, #&80
-        STRLTB  R6, [R5]
-        MOVLT   R4, #1
-        EXIT    LT
+        STRLOB  R6, [R5]
+        MOVLO   R4, #1
+        EXIT    LO
         ; Is it illegal? (Shouldn't ever be, but just in case...)
         TST     R6, #1:SHL:31
         MOVNE   R4, #0
@@ -2963,8 +2976,7 @@ read_current_alphabet
 ;   R8 = 0/1 we are trying to in/exclude characters
 
 checkvalid
-        CMP     R3,#0
-        CMPLE   R3,R3
+        CMP     R3,R3,ASR #31
         MOVEQ   PC,LR           ; Z set ==> char ok
 
       [ UTF8
@@ -3410,8 +3422,8 @@ SWIWimp_CreateSubMenu
         STR     R14,externalcreate      ; flag as an external create of a menu
 
 justcreatemenu
-        CMP     R1,#0
-        BLGT    int_create_menu         ; <=0 ==> just close menus
+        CMP     R1,R1,ASR #31
+        BLNE    int_create_menu         ; <=0 ==> just close menus
         LDR     R14,menuSP
         TEQ     R14,#0                  ; don't affect V flag
         STRMI   R14,menutaskhandle      ; none left ==> no menu owner
@@ -4202,7 +4214,7 @@ createmenutitle Entry
  [ False
         LDR     R14,=306                ; indirected menu titles added when?
         CMP     R14,R0
-        BGT     %FT05                   ; Jump if app doesn't know about indirected titles
+        BHI     %FT05                   ; Jump if app doesn't know about indirected titles
  ]
         TST     R4, #mif_longtitle      ; Title indirected?
         BEQ     %FT05                   ; No then jump
@@ -4223,15 +4235,15 @@ createmenutitle Entry
 00
  ]
         CMP     R0,#32                  ; is a title bar present?
-        LDRGE   R14,[handle,#w_flags]
+        LDRHS   R14,[handle,#w_flags]
 
         [ StickyMenus
-        ORRGE   R14,R14,#wf_icon3 :OR:wf_icon2
+        ORRHS   R14,R14,#wf_icon3 :OR:wf_icon2
         |
-        ORRGE   R14,R14,#wf_icon3
+        ORRHS   R14,R14,#wf_icon3
         ]
 
-        STRGE   R14,[handle,#w_flags]   ; flag as being present if required
+        STRHS   R14,[handle,#w_flags]   ; flag as being present if required
 
         TEQ     R0,#"\\"                ; is it a reversed menu?
         ADDEQ   R1,R1,#1
@@ -4244,15 +4256,15 @@ createmenutitle Entry
         Debug   menu,"old style menu: first char =",R0
 
         CMP     R0,#32
-        LDRGE   R14,[handle,#w_flags]
+        LDRHS   R14,[handle,#w_flags]
 
         [ StickyMenus
-        ORRGE   R14,R14,#wf_icon3 :OR:wf_icon2
+        ORRHS   R14,R14,#wf_icon3 :OR:wf_icon2
         |
-        ORRGE   R14,R14,#wf_icon3
+        ORRHS   R14,R14,#wf_icon3
         ]
 
-        STRGE   R14,[handle,#w_flags]   ; no, so remove it!
+        STRHS   R14,[handle,#w_flags]   ; no, so remove it!
 
         TEQ     R0,#"\\"
         BICEQ   R1,R1,#&FF
@@ -4466,11 +4478,11 @@ setmenucaret TraceL sc
         TEQEQ   R3,R14
         BEQ     donemenucaret
 
-        CMP     R14,#0                  ; unless it's a menu icon, remember it
-        ADRLE   R14,caretdata
-        LDMLEIA R14,{R0-R5}
-        ADRLE   R14,oldcaretdata
-        STMLEIA R14,{R0-R5}
+        CMP     R14,#nullptr            ; unless it's a menu icon, remember it
+        ADREQ   R14,caretdata
+        LDMEQIA R14,{R0-R5}
+        ADREQ   R14,oldcaretdata
+        STMEQIA R14,{R0-R5}
 
         pullx   "R0-R5"
 
@@ -4678,9 +4690,9 @@ scanmenus
         Pull    "R0-R5,PC",LE    ; no menus active
 
         Push    "R4"
-        CMP     R3,#0                   ; is this a real window?
-        MOVGT   R4,#-1                  ; Fake system icon, to force task swap.
-        BLGT    pageinicontask_R3R4     ; takes note of iconbar
+        CMP     R3,#nullptr             ; is this a real window?
+        MOVNE   R4,#-1                  ; Fake system icon, to force task swap.
+        BLNE    pageinicontask_R3R4     ; takes note of iconbar
         Pull    "R4"
 
         BL      findmenu                ; R1 = index of current menu
@@ -4811,8 +4823,8 @@ intopmenu
         LDREQ   R14,[R2,#mi_mflags-16]  ; can still traverse if menu flag set
         TSTEQ   R14,#mif_traverse
         LDRNE   R4,[R2,#mi_submenu-16]  ; look at sub-menu item
-        CMPNE   R4,#0                   ; now EQ or CC => no submenu
-        BLE     exitscanmenu            ; no sub-menu!
+        CMPNE   R4,R4,ASR #31
+        BEQ     exitscanmenu            ; no sub-menu!
 
 ; notify the 'Demo' module that something interesting is happening
 
@@ -5019,8 +5031,8 @@ gomenuselect
         LDR     R0, [R0, R1]            ; R0 -> menu data structure for current menu
         ADD     R0, R0, R4, LSL #3      ; add on R4*8, ie selection * 24
         LDR     R14, [R0, #mi_submenu]
-        CMP     R14, #0                 ; check that there is a submenu attached to this item
-        BLE     notasubmenuclick        ; if not, then proceed as normal
+        CMP     R14, R14, ASR #31       ; check that there is a submenu attached to this item
+        BEQ     notasubmenuclick        ; if not, then proceed as normal
         LDR     R14, [R0, #mi_mflags]
         LDR     R0, [R0, #mi_iflags]
         AND     R14, R14, #mif_traverse
@@ -5056,10 +5068,10 @@ copymlp
         STR     R2,[userblk,R0]         ; stick terminator in at end
 
         LDR     R14,singletaskhandle
-        CMP     R14,#0
+        CMP     R14,#nullptr
         MOV     R0,#-4                  ; mark temporary (Poll kills menus)
-        STRLE   R0,menus_temporary
-        BLGT    closemenus              ; close immediately if old-style task!
+        STREQ   R0,menus_temporary
+        BLNE    closemenus              ; close immediately if old-style task!
 
 longjumpexit
         LDR     R13,longjumpSP          ; set up on entry to Wimp

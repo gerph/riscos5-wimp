@@ -76,8 +76,8 @@ returnmessage
 
         Debug   pk,"About to send message to TM ",R14,R5
         LDR     R14,[R2,#msb_link]
-        CMP     R14,#0
-        BLE     glurg
+        CMP     R14,#nullptr
+        BEQ     glurg
 
         LDR     R5,[R14,#msb_receiver]
 
@@ -85,11 +85,11 @@ returnmessage
         Debug   pk,"Next reason code message is ",R14,R5
 
         LDR     R14,[R2,#msb_link]
-        CMP     R14,#0
-        BLE     glurg
+        CMP     R14,#nullptr
+        BEQ     glurg
         LDR     R14,[R14,#msb_link]
-        CMP     R14,#0
-        BLE     glurg
+        CMP     R14,#nullptr
+        BEQ     glurg
 
 
         LDR     R14,[R14,#msb_reasoncode]
@@ -290,8 +290,8 @@ check_mem_message
         MOVGT   R14,R14,LSR #flag_versionbit
         ORRGT   R2,R2,R14,LSL #flag_versionbit
 05
-        CMP     R0,#0
-        BLE     %FT99
+        CMP     R0,#nullptr
+        BEQ     %FT99
         LDR     R3,[R0,#msb_reasoncode]
         TEQ     R3,#User_Message
         LDREQ   R3,[R0,#msb_sender]
@@ -424,8 +424,8 @@ gottaskhandle
         ADR     R4,headpointer-msb_link
 01
         LDR     R5,[R4,#msb_link]
-        CMP     R5,#0
-        BLE     doneackmess                     ; finished
+        CMP     R5,#nullptr
+        BEQ     doneackmess                     ; finished
         LDR     R14,[R5,#msb_myref]
         TEQ     R14,R3                          ; same id?
         MOVNE   R4,R5
@@ -460,11 +460,13 @@ doneackmess
         ADDEQ   R14,R14,#1              ; avoid 0
         STR     R14,myref
 ;
-        SUBS    R4,R1,#ROMstart         ; don't splat the ROM!
-        RSBCSS  R4,R4,#OSROM_ImageSize * 1024
+        LDR     R3,ROMstart
+        LDR     R5,ROMend
+        CMP     R1,R3                   ; don't splat the ROM!
+        CMPHS   R5,R1
         LDR     R4,sender               ; worked out earlier
-        STRCC   R4,[R1,#ms_sender]
-        STRCC   R14,[R1,#ms_myref]
+        STRLO   R4,[R1,#ms_sender]
+        STRLO   R14,[R1,#ms_myref]
         Debug   ms,"New sender,my_ref =",R4,R14
 ;
 ; check for User_Message_Acknowledge - if it is, then don't actually send it
@@ -486,15 +488,15 @@ notusermess
 
       [ NKmessages1
         LDR     R4,lastpointer
-        CMP     R4,#0
-        ADRLE   R4,headpointer-msb_link
+        CMP     R4,#nullptr
+        ADREQ   R4,headpointer-msb_link
       |
         ADR     R4,headpointer-msb_link
 01
         LDR     R14,[R4,#msb_link]
-        CMP     R14,#0
-        MOVGT   R4,R14
-        BGT     %BT01
+        CMP     R14,#nullptr
+        MOVNE   R4,R14
+        BNE     %BT01
       ]
 
         STR     R2,[R4,#msb_link]       ; add to end of list (FIFO)
@@ -530,7 +532,7 @@ notusermess
         STR     R14,[R2,R7]
 03
         SUBS    R7,R7,#4                ; now the actual message block
-        BGE     %BT01
+        BPL     %BT01
 ;
 ; message is not actually sent until the next Wimp_Poll
 ;
@@ -710,8 +712,8 @@ byemessages
         ADR     R1,headpointer-msb_link
 01
         LDR     R1,[R1,#msb_link]
-        CMP     R1,#0
-        Pull    "R1,PC",LE
+        CMP     R1,#nullptr
+        Pull    "R1,PC",EQ
 ;
         LDR     R14,[R1,#msb_handle]
         TEQ     R14,R0
@@ -1346,8 +1348,8 @@ saveFPregs
 
         LDR     R2,[R4,#task_fpblock]           ; block may already be claimed
         CMP     R2,#0                           ; (assume will be required again)
-        MOVLE   R3,#fp_size
-        BLLE    claimblock                      ; R2 -> block address
+        MOVEQ   R3,#fp_size
+        BLEQ    claimblock                      ; R2 -> block address
         STRVS   R0,[sp,#Proc_RegOffset]
         EXIT    VS
         STR     R2,[R4,#task_fpblock]
@@ -1621,8 +1623,8 @@ ExitError2
 
 useerrorwindow
         LDR     R8,errorhandle          ; R8 = relative error window handle
-        CMP     R8,#0
-        BLE     noerrorwindow           ; oops!
+        CMP     R8,#nullptr
+        BEQ     noerrorwindow           ; oops!
 ;
         ADRL    R0,execcom              ; always cancel exec file (if any)
         SWI     XOS_CLI
@@ -1698,18 +1700,18 @@ pollit
         TST     R14, #erf_newtype
         BNE     %FT06
         LDR     R2, tempworkspace+errtws_buttonlist
-        CMP     R2,#1
-        BLT     %FT06 ; if no extra buttons, skip next section
+        CMP     R2,R2,ASR #31
+        BEQ     %FT06 ; if no extra buttons, skip next section
 
         LDR     R2, tempworkspace+errtws_iconend
 
         CMP     R2, #8                  ; are there at least 1 extra buttons?
-        CMPGE   R4, #-1                 ; have we found both buttons yet?
+        CMPHS   R4, #-1                 ; have we found both buttons yet?
         MOVEQ   R4, R5                  ; Return -> previous Escape button
         SUBEQ   R5, R2, #1              ; Escape -> highest-numbered (rightmost) extra button
 
         CMP     R2, #9                  ; are there at least 2 extra buttons?
-        CMPGE   R4, #-1                 ; have we found both buttons yet?
+        CMPHS   R4, #-1                 ; have we found both buttons yet?
         MOVEQ   R4, R5                  ; Return -> previous Escape button
         SUBEQ   R5, R2, #2              ; Escape -> second highest-numbered (second rightmost) extra button
 06
@@ -1789,9 +1791,9 @@ finisherror
         [ NewErrorSystem
         CMP     R1,#6
         BEQ     notoveryet
-        SUBGT   R1,R1,#2
-        LDRGT   R2,tempworkspace+errtws_iconend
-        SUBGT   R1,R2,R1                ; extra icons 7-10 return 6-3
+        SUBHI   R1,R1,#2
+        LDRHI   R2,tempworkspace+errtws_iconend
+        SUBHI   R1,R2,R1                ; extra icons 7-10 return 6-3
         ]
 
         [ ErrorServiceCall
@@ -2330,8 +2332,7 @@ starterrorbox_draw
 ;
         Push    "R2-R5"
 ;
-        CMP     R2,#0                   ; do they want an application name?
-        CMPNE   R2,#nullptr
+        CMP     R2,R2,ASR #31           ; do they want an application name?
         ADREQL  R0,errorprefix1
         BICEQ   R1,R1,#erf_omiterror
         ADRNEL  R0,errorprefix2         ; -> suitable token
@@ -2384,19 +2385,19 @@ starterrorbox_draw
         STR     R0,[handle,#w_areaCBptr]
         TST     userblk,#erf_newtype
         BEQ     oldappsprite
-        CMP     R3,#1
+        CMP     R3,R3,ASR #31
 
-        LDRLT   R14,[handle,#w_icons]
-        ADDLT   R14,R14,#i_size
+        LDREQ   R14,[handle,#w_icons]
+        ADDEQ   R14,R14,#i_size
 ; make sure default says 'OK'
-        ADRLT   R0,contlabel
-        Push    "R2",LT                         ; SMC: now lookup text for button but leave it to oldappsprite2 (must preserve R2)
-        ADRLTL  R2,conttext
-        BLT     oldappsprite2
+        ADREQ   R0,contlabel
+        Push    "R2",EQ                         ; SMC: now lookup text for button but leave it to oldappsprite2 (must preserve R2)
+        ADREQL  R2,conttext
+        BEQ     oldappsprite2
 
         LDR     R2,tempworkspace+errtws_spritearea
-        CMP     R2,#255
-        STRGT   R2,[handle,#w_areaCBptr]
+        CMP     R2,#1
+        STRHI   R2,[handle,#w_areaCBptr]
         MOV     R2,R3                           ; sprite given so use it
         LDR     R14,[handle,#w_icons]
         ADD     R14,R14,#i_size
@@ -2444,8 +2445,7 @@ oldappsprite2
 
         ADD     R14,R14,#i_data+i_size
         Push    "R1,R2"
-        CMP     R2,#0
-        CMPNE   R2,#nullptr
+        CMP     R2,R2,ASR #31
         ADREQ   R2,noappname
         MOVEQ   R1,#11
         BEQ     oldapploop
@@ -2453,9 +2453,9 @@ oldappsprite2
 
         LDRB    R0,[R2]
         CMP     R0,#" "
-        ADRLE   R2,noappname
-        MOVLE   R1,#11
-        BLE     oldapploop
+        ADRLS   R2,noappname
+        MOVLS   R1,#11
+        BLS     oldapploop
 
 ; copy !<R2> to sprite name
         MOV     R0,#"!"
@@ -2516,7 +2516,7 @@ doneappsprite
 
         LDR     R14,tempworkspace+errtws_buttonlist
         TST     userblk,#erf_newtype
-        TEQNE   R14,#0
+        CMPNE   R14,R14,ASR #31
         BNE     %FT10
 
         TST     userblk,#erf_okbox:OR:erf_cancelbox
@@ -2560,9 +2560,9 @@ doneappsprite
 ; now do dynamic icons 7,8,9,10
 
         LDR     R2,tempworkspace+errtws_buttonlist
-        CMP     R2,#1
-        MOVLT   R3,#7
-        BLT     markinvisibleicons
+        CMP     R2,R2,ASR #31
+        MOVEQ   R3,#7
+        BEQ     markinvisibleicons
 
         TST     userblk,#erf_newtype
         MOVEQ   R3,#7
@@ -2641,11 +2641,11 @@ markinvisibleicons
 ; unused icons need to be made invisible
 markinvisloop
         CMP     R3,#7+maxno_error_buttons-1
-        BGT     markinvend
+        BHI     markinvend
         MakeInvisibleReg   R3
         ADD     R3,R3,#1
         CMP     R3,#7+maxno_error_buttons
-        BLT     markinvisloop
+        BLO     markinvisloop
 markinvend
 
 ; count icons on stack
@@ -2658,7 +2658,7 @@ countstackicons
         BNE     countstackicons
 
         CMP     R0,#maxno_error_buttons+1
-        BLT     alignicons
+        BLO     alignicons
         Pull    "R1"
         SUB     R0,R0,#maxno_error_buttons
 marktoomanyicons
@@ -2777,7 +2777,7 @@ clearstack
         LDR     R0, linecount
         Debug   err, "Error message icon line count =", R0
         CMP     R0, #errmess_maxlines
-        BLE     %FT01                           ; satisfactory number of lines, we don't need to stretch any further
+        BLS     %FT01                           ; satisfactory number of lines, we don't need to stretch any further
         LDR     R2, [sp, #1*4]                  ; R2 -> text icon definition
         LDR     R3, [R2, #i_bbx0]
         SUB     R3, R3, #errmess_increment      ; enlarge window by one step
@@ -2879,13 +2879,13 @@ clearstack
         CMP     R14,#2                  ; poss. values are 1,2,3 (L,R,BOTH)
         LDRNE   R1,[handle,#w_icons]
         ADDNE   R1,R1,#i_size*1
-        ADDGT   R2,R2,R3,ASR #2         ; add 1/4 of width if both present
-        ADDLT   R2,R2,R3,ASR #1         ; add 1/2 of width if 'OK' only
+        ADDHI   R2,R2,R3,ASR #2         ; add 1/4 of width if both present
+        ADDLO   R2,R2,R3,ASR #1         ; add 1/2 of width if 'OK' only
         BLNE    setbuttonx              ; R1-->icon,R2=centre x-coord
-        ADDGE   R2,R2,R3,ASR #1         ; add 1/2 of width -> Cancel
-        LDRGE   R1,[handle,#w_icons]
-        ADDGE   R1,R1,#i_size*4
-        BLGE    setbuttonx              ; R1-->icon,R2=centre x-coord
+        ADDHS   R2,R2,R3,ASR #1         ; add 1/2 of width -> Cancel
+        LDRHS   R1,[handle,#w_icons]
+        ADDHS   R1,R1,#i_size*4
+        BLHS    setbuttonx              ; R1-->icon,R2=centre x-coord
         ]
 
 ;

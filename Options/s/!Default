@@ -89,4 +89,7 @@
         Option  RegisterSprites22,      false
         Option  RegisterTemplates,      false
 
+        GBLA    DefaultNextSlot
+DefaultNextSlot SETA 640*1024
+
         END

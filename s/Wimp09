@@ -70,7 +70,7 @@ makespritelist Entry   "R0-R4,R8-R9"
 ;
         LDR     R2,list_size
         CMP     R2,R3,LSL #2            ; is the current buffer big enough?
-        BGE     %FT10                   ; if not then skip the new cliam
+        BHS     %FT10                   ; if not then skip the new cliam
 ;
         BL      freelist                ; release the current list
 ;
@@ -178,8 +178,8 @@ makespritelist Entry   "R0-R4,R8-R9"
 
 40      SUB     R4,R3,R2
         CMP     R4,#8                   ; have we finished yet?
-        STRLT   R3,list_end             ; setup the chopping end
-        EXIT    LT
+        STRLO   R3,list_end             ; setup the chopping end
+        EXIT    LO
 
         LDMIA   R2,{R0,R1}
         BL      checkspritenames        ; are the two sprite names the same?
@@ -319,9 +319,9 @@ freelist EntryS  "R0-R2"
         Debug   sprite,"Calling to free sprite list",#list_at
 ;
         LDR     R2,list_at
-        CMP     R2,#0                   ; is the list memory allocated?
-        MOVGT   R0,#ModHandReason_Free
-        BLGT    XROS_Module              ; yes, so release it (ignore errors)
+        CMP     R2,R2,ASR #31           ; is the list memory allocated?
+        MOVNE   R0,#ModHandReason_Free
+        BLNE    XROS_Module              ; yes, so release it (ignore errors)
 ;
         MOV     R2,#0
         STR     R2,list_at
@@ -345,8 +345,8 @@ getspriteaddr Entry "R0-R1,R3-R5"
         LDR     R0,spritename           ; get pointer to name to compare against
 ;
         LDR     R2,list_at              ; base of sprite pointerrs
-        CMP     R2,#1                   ; this may be 0 (not initialised) or -1 (no room)
-        BLT     %FT20
+        CMP     R2,R2,ASR #31           ; this may be 0 (not initialised) or -1 (no room)
+        BEQ     %FT20
         LDR     R3,list_end
         SUB     R3,R3,R2
         SUB     R3,R3,#4
@@ -545,7 +545,7 @@ SWIWimp_AddMessages
         LDR     R0,[R0,#task_wimpver]
         LDR     R1,=messcheck_version
         CMP     R0,R1                   ; is it worth adding to the list?
-        BLGE    addmessages
+        BLHS    addmessages
 
         B       ExitWimp
 
@@ -582,8 +582,8 @@ addmessages Entry "R0-R7"
         LDR     R4,[WsPtr,R4]           ; get pointer to the task block
 
         LDR     R2,[R4,#task_messages]
-        CMP     R2,#0
-        BGT     addmoremessages         ; add to the list if non-zero, create new block
+        CMP     R2,R2,ASR #31
+        BNE     addmoremessages         ; add to the list if non-zero, create new block
 
         Push    "R3"
         MOV     R3,R5                   ; size of list to create
@@ -699,7 +699,7 @@ SWIWimp_RemoveMessages
         LDR     R0,[R0,#task_wimpver]   ; = version number known by this task
         LDR     R1,=messcheck_version
         CMP     R0,R1                   ; is the tasks version number valid for this call?
-        BLGE    removemessages
+        BLHS    removemessages
 
         B       ExitWimp
 
@@ -718,10 +718,10 @@ removemessages Entry "R1-R2,R4-R8"
         LDR     R4,[WsPtr,R4]           ; -> task block
 
         LDR     R5,[R4,#task_messages]
-        CMP     R5,#0                   ; are there any messages listed?
-        LDRGT   R6,[R4,#task_messagessize]
-        CMPGT   R6,#0
-        EXIT    LE                      ; if no messages then return
+        CMP     R5,R5,ASR #31           ; are there any messages listed?
+        LDRNE   R6,[R4,#task_messagessize]
+        CMPNE   R6,#0
+        EXIT    EQ                      ; if no messages then return
 
         Debug   msgsel,"selective remove list, size =",R5,R6
 
@@ -788,9 +788,9 @@ removeallmessages Entry "R0,R2,R4-R5"
         LDR     R5,[WsPtr,R5]           ; -> task record to be modified
 
         LDR     R2,[R5,#task_messages]
-        CMP     R2,#0                   ; is there a list attached
-        MOVGT   R0,#ModHandReason_Free
-        BLGT   XROS_Module              ; attempt to release it
+        CMP     R2,R2,ASR #31           ; is there a list attached
+        MOVNE   R0,#ModHandReason_Free
+        BLNE   XROS_Module              ; attempt to release it
 
         MOV     R2,#-1                  ; flag as no list of messages
         STR     R2,[R5,#task_messages]
@@ -824,10 +824,10 @@ checkformessage
         Entry   "R0-R4"
 
         LDR     R0,[R3,#task_messages]
-        CMP     R0,#0                   ; are the messages enabled?
-        LDRGT   R1,[R3,#task_messagessize]
-        CMPGT   R1,#0                   ; if there is is the list big enough?
-        EXIT    LT                      ; no, so send them all of them
+        CMP     R0,R0,ASR #31           ; are the messages enabled?
+        LDRNE   R1,[R3,#task_messagessize]
+        CMPNE   R1,#0                   ; if there is is the list big enough?
+        EXIT    EQ                      ; no, so send them all of them
 
         Debug   msgsel,"into check for message; block at, task, external =",R2,R3,R5
 
