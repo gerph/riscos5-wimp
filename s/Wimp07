@@ -1273,9 +1273,13 @@ callbackpoll
       [ debugtask
         Push    "R0,LR"
 ;
+      [ No32bitCode
         Push    "PC"
         Pull    "R0"
         AND     R0,R0,#ARM_CC_Mask
+      |
+        MRS     R0, CPSR
+      ]
         Debug   task,"Flags on entry to callbackpoll:",R0
 ;
         Pull    "R0,LR"
