@@ -68,5 +68,6 @@ bbe-wimp: bbe-generic-resources-get-alias
 	BBE_Export_File_In_Dir Resources.${LOCALE} Messages
 	BBE_Export_File_In_Dir Resources.${LOCALE} CmdHelp
 	BBE_Export_Dir Resources.${LOCALE}.${USERIF}
+	BBE_Export_File VersionNum
 
 # Dynamic dependencies:
