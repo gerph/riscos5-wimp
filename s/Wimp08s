@@ -228,6 +228,7 @@ servicememorymoved
         MOV     R1,#0
         SWI     XOS_ChangeEnvironment
         LDR     R0,appspacesize
+        SUB     R1,R1,#ApplicationStart
         TEQ     R1,R0
         Pull    "R0-R6,PC", EQ
         LDR     R0,slotsize
@@ -1120,6 +1121,10 @@ mapslotin       ROUT
         LDR     R14,taskhandle
         LDR     R4,[wsptr,R14]          ; NB task cannot be dead
         ADD     R4,R4,#task_environment
+;
+        LDR     R14,[R4,#12*ApplicationSpaceSize]
+        SUB     R14,R14,#ApplicationStart
+        STR     R14,appspacesize
 ;
         MOV     R0,#0                   ; handler number
 01
