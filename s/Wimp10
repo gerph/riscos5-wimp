@@ -546,6 +546,33 @@ maketoollist EntryS "R1-R11"
 
 ; work out which suffix to apply to sprite names
 
+      [ Sprites11
+        MOV     R6,#1
+        MOV     R10,#'0'
+
+        MOV     R0,#-1
+        MOV     R1,#VduExt_XEigFactor
+        SWI     XOS_ReadModeVariable
+        ADD     R5,R10,R6,LSL R2
+
+        MOV     R1,#VduExt_YEigFactor
+        SWI     XOS_ReadModeVariable
+        ADD     R6,R10,R6,LSL R2
+
+        TEQ     R6,#'2'
+        TEQNE   R6,#'4'
+        TEQEQ   R5,#'2'
+        BNE     %FT05                   ; if not '22' or '24' then no mono alternative suffix
+
+        MOV     R1,#VduExt_Log2BPP
+        SWI     XOS_ReadModeVariable
+        TEQ     R2,#0
+        BNE     %FT05                   ; not mono
+        TEQ     R6,#'4'
+        MOVEQ   R5,#'0'
+        MOVEQ   R6,#0                   ; '24' -> '0'
+        MOVNE   R6,#'3'                 ; '22' -> '23'
+      |
         MOV     R5,#"2"                 ; first char is "2"
 ;
         MOV     R0,#-1
@@ -572,6 +599,7 @@ maketoollist EntryS "R1-R11"
         TEQ     R2,#0                   ; is it a monochrome mode?
         ADDEQS  R6,R6,#1
         MOVEQ   R5,#"0"                 ; use 23 if was 22, else 0.
+      ]
 05
         ORR     R10,R5,R6,LSL #8        ; combine to make a postfix
 ;
@@ -609,7 +637,9 @@ maketoollist EntryS "R1-R11"
 07
         MOV     R0,#0
         MOV     R1,#0                   ; Set tool sizes to 0 == undefined
+      [ :LNOT: fixrmatools
         STRB    R1,spritecachevalid
+      ]
         BL      default_params
 
         ADD     R3,R3,R2                ; -> end of list
@@ -644,6 +674,67 @@ maketoollist EntryS "R1-R11"
 ;
         [ :LNOT: fixrmatools
         ; this uses different approach to cut down on 'sprite not found'
+        [ Sprites11
+
+        LDRB    R14,spritecachevalid
+        TEQ     R14,#0
+        BNE     %FT04
+        BL      cachespriteaddress      ; try with postfix
+        BVC     %FT07                   ; list exists and postfixed sprite found
+
+        LDR     R14,list_at
+        CMP     R14,R14,ASR #31
+        BEQ     %FT03
+        BL      cachetoolspriteaddress  ; list exists, try other or no postfixes
+        B       %FT07
+
+03      MOV     R14,#1
+        STRB    R14,spritecachevalid    ; remember there's no list for next toolsprite
+04      LDR     R14,thisCBptr
+        Push    "R14"
+        ADRL    R14,tool_areaCB
+        STR     R14,thisCBptr
+        BL      cachespriteaddress
+        BLVS    cachetoolspriteaddress
+        Pull    "R14"
+        STR     R14,thisCBptr
+        B       %FT07
+
+cachetoolspriteaddress ; [spritename], [thisCBptr], [lengthflags] as for cachespriteaddress
+                       ; R4 -> resolution suffix
+                       ; R10 = first suffix tried (and failed)
+        Push    "R14"
+        MOV     R14,#&FF
+        AND     R5,R14,R10
+        AND     R6,R14,R10,LSR #8
+        SUBS    R5,R5,#'0'
+        SUB     R6,R6,#'0'
+        MOVEQ   R5,#2
+        MOVEQ   R6,#8                   ; pretend '0' was '28' so we try '24' next
+        TEQ     R6,#3
+        MOVEQ   R6,#4                   ; pretend '23' was '24' so we try '22' next
+
+05      CMP     R5,R6
+        MOVLO   R5,R5,LSL#1
+        MOVHI   R6,R6,LSL#1
+        BNE     %FT06                   ; after rectangular pixels, try next squarer version
+
+        TEQ     R5,#1
+        MOVEQ   R5,#2
+        MOVEQ   R6,#2                   ; after '11', try '22'
+        MOVNE   R5,#-'0'                ; after any other square pixels, try without suffix
+
+06      ADD     R14,R5,#'0'
+        STRB    R14,[R4]
+        ADD     R14,R6,#'0'
+        STRB    R14,[R4,#1]
+        BL      cachespriteaddress
+        Pull    "PC", VC                ; success
+        TEQ     R5,#0
+        BPL     %BT05                   ; try next suffix
+        Pull    "PC"                    ; total failure, exit with
+
+        |
 
         CLRV
         LDRB    R14,spritecachevalid
@@ -674,12 +765,12 @@ maketoollist EntryS "R1-R11"
         CLRV
         STRB    R2,[R4]                 ; try without the suffix
         BL      cachespriteaddress
-        B       %FT07
-        |
-        BL      cachespriteaddress
+        ; drop through...
         ]
 
-        [ fixrmatools
+        |
+
+        BL      cachespriteaddress
 ; this will fail if the tool list cannot be remade, (eg. due to lack of RMA)
 ; so try with thisCBptr -> tool_areaCB  which will cause OS_SpriteOp to be used (NK 3.26)
         BVC     %FT07

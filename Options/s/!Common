@@ -79,8 +79,9 @@
         Option  MinimumMenuHeight,      false :LAND: RO4        ; make all menu items at least 44 high
         Option  TrueSelectionColours,   true :LAND: RO4         ; allow specification of alternate selection colours
         Option  DotsAsWordSeparators,   true :LAND: RO4         ; when moving the caret on writable icons treat '.' the same as space
-        Option  FullIconClipping,       false :LAND: RO4        ; always clip the whole of icons to their bounding boxes rather than
-                                                                ; letting sprites overlap
+        Option  FullIconClipping,       false :LAND: RO4        ; always clip the whole of icons to their bounding boxes rather than letting sprites overlap
+
+        Option  Sprites11,              true            ; new sprite selection scheme that allows use of Sprites11 files
 
         END
 

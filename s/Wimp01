@@ -157,12 +157,16 @@ $lab    MyEntry $string
 $lab
       [ debugtask2
         Push    "R0"
-        LDR     R0, [sp, #1*4 + 11*4 + 2*4 + 2*4] ; get return address from stack - skip:
+        TEQ     pc,pc
+        LDRNE   R0, [sp, #(1 + 11 + 2 + 4) * 4]
+        LDREQ   R0, [sp, #(1 + 11 + 2 + 3) * 4]   ; get return address from stack - skip:
                                                   ; 1 word:   for storing R0 here
                                                   ; 11 words: registers stored by generic Wimp SWI code
                                                   ; 2 words:  for Wimp re-entrancy
-                                                  ; 1 word:   return address in kernel
-                                                  ; 1 word:   used by kernel
+                                                  ; 1 word:   return address (in kernel SWI despatcher)
+                                                  ; 1 word:   used by kernel - caller R9 (only for 26-bit OSes)
+                                                  ; 1 word:   used by kernel - caller flags
+                                                  ; 1 word:   used by kernel - SWI number
         SUB     R0, R0, #4 ; we actually want the previous instruction
         Debug   task2,"$string called by, from:",#taskhandle,R0
         Pull    "R0"
@@ -835,7 +839,9 @@ temp_text_height #      4               ; 320nk textwidth now gets height
         [ slabinout
 two_sprite_save #       4               ; save flags for two sprite icons
         ]
+        [ :LNOT: fixrmatools
 spritecachevalid #      0               ; uses same adr as below
+        ]
 auto_menu_flag  #       1               ; flag to keep track of auto width
 autorepeating   #       1
         [ TrueIcon3
@@ -1929,6 +1935,8 @@ swapping_version   *  286         ; First version in which swapping is implement
 
         ASSERT  (.=Module_BaseAddr)
 
+        ENTRY
+
 MySWIBase       *       Module_SWISystemBase + WimpSWI * Module_SWIChunkSize
 
         DCD     Start          - Module_BaseAddr
@@ -2122,7 +2130,7 @@ WimpClickSubmenuC_Help          DCB "*Configure WimpClickSubmenu sets whether cl
 WimpClickSubmenuC_Syntax        DCB "Syntax: *Configure WimpClickSubmenu On|Off",0
         ]
 	[ ThreeDPatch
-WimpVisualFlags_Help		DCB "Change the visual appearance of the desktop.",cr
+WimpVisualFlags_Help		DCB "*WimpVisualFlags will change some aspects of the visual appearance of the desktop.",cr
 				DCB "-3DWindowBorders",cr
 				DCB "   Give all menus and dialogue boxes a 3D border.",cr
 				DCB "-TexturedMenus",cr
@@ -2777,7 +2785,7 @@ greys_16
 ; *IconSprites <filename>
 ; In:   R0 -> parameters
 ;       R1 = number of parameters (1)
-; Out:  R0-R3 corrupted (OS_CLI restores them)
+; Out:  R0-R6 may be corrupted
 ; call Wimp_SpriteOp (11 = merge) to add sprites to the common sprite area
 ; tries "<filename>23" if hi-res mono, and/or "<filename>22" if 2x2 OS units
 
@@ -2785,16 +2793,54 @@ IconSprites_Code
         Push    "R12,LR"
         LDR     wsptr,[R12]
 ;
+      [ Sprites11
+        MOV     R3,R0                   ; R3 -> original filename
+        LDRB    R5,romspr_suffix
+        LDRB    R6,romspr_suffix+1
+        SUB     R5,R5,#'0'
+        SUB     R6,R6,#'0'
+        SUB     sp,sp,#4
+01      ADD     R14,R5,R6,LSL #8
+        ADD     R14,R14,#'0'
+        ADD     R14,R14,#'0':SHL:8
+        STR     R14,[sp]
+        MOV     R0,sp
+        MOV     R1,R3
+      |
         MOV     R1,R0
         MOV     R3,R0                   ; R3 -> original filename
+      ]
         BL      getspritefname          ; R1 -> <filename><x><y><bpp>
         MOV     R2,R1                   ; R2 -> filename
 ;
         MOV     R0,#SpriteReason_MergeSpriteFile
         SWI     XWimp_SpriteOp
+      [ Sprites11
+        BVC     %FT04
+
+        TEQ     R6,#3
+        MOVEQ   R6,#2
+        BEQ     %BT01                   ; after Sprites23, try Sprites22
+
+        CMP     R5,R6
+        MOVLO   R5,R5,LSL#1
+        MOVHI   R6,R6,LSL#1
+        BNE     %BT01                   ; after rectangular pixels, try next squarer version
+
+        TEQ     R5,#1
+        MOVEQ   R5,#2
+        MOVEQ   R6,#2
+        BEQ     %BT01                   ; after Sprites11, try Sprites22
+
+        MOV     R2,R3                   ; R2 -> original filename
+        MOV     R0,#SpriteReason_MergeSpriteFile
+        SWI     XWimp_SpriteOp
+04      ADD     sp,sp,#4
+      |
         MOVVS   R2,R3                   ; R2 -> original filename
         MOVVS   R0,#SpriteReason_MergeSpriteFile
         SWIVS   XWimp_SpriteOp
+      ]
         BVS     %FT05
 
  [ windowsprite
@@ -2844,8 +2890,12 @@ IconSprites_Code
 
 ;............................................................................
 
-; In    R1 -> sprite filename
+; In  [ Sprites11
+;       R0 -> suffix to add to filename
+;     |
 ;       [romspr_suffix..] = suffix to add to filename
+;     ]
+;       R1 -> sprite filename
 ; Out   R1 -> <filename><suffix> (in watchdog errorbuffer)
 ;       R2 -> start of suffix as added to filename
 
@@ -2869,7 +2919,9 @@ getspritefname
         LDRHIB  R14,[R1],#1
         BHI     %BT02
 
+      [ :LNOT: Sprites11
         ADR     R0,romspr_suffix
+      ]
         MOV     R1,R2
         BL      copy0                   ; copy from R0 to R1
       [ false
@@ -3689,6 +3741,8 @@ Die
 
         MakeErrorBlock WimpCantKill
 
+
+
 ;;-----------------------------------------------------------------------------
 ;; Command Window code variable
 ;;-----------------------------------------------------------------------------
@@ -3914,20 +3968,40 @@ getromsprites
         CMP     R0,#-2                  ; if R1 = -2, we're stuck!
         LDREQ   R0,currentmode          ; (just give up and use the original)
 ;
+      [ :LNOT: Sprites11
         MOV     R3,#"0"
+      ]
         MOV     R4,#1
 
         MOV     R1,#VduExt_XEigFactor
         SWI     XOS_ReadModeVariable
+      [ Sprites11
+        MOV     R5,R4,LSL R2                    ; R5 = char 0 - '0'
+      |
         ADD     R5,R3,R4,LSL R2                 ; R5 = char 0
+      ]
 
         MOV     R1,#VduExt_YEigFactor
         SWI     XOS_ReadModeVariable
+      [ Sprites11
+        MOV     R6,R4,LSL R2                    ; R6 = char 1 - '0'
+      |
         ADD     R6,R3,R4,LSL R2                 ; R6 = char 1
+      ]
 
 	MOV	R1,#VduExt_Log2BPP
 	SWI	XOS_ReadModeVariable
 
+      [ Sprites11
+        TEQ     R5,#2  				; 2x2 OS unit, 1bpp
+        TEQEQ   R6,#2
+        TEQEQ   R2,#0
+        MOVEQ   R6,#3
+
+        ADD     R14,R5,R6,LSL #8
+        ADD     R14,R14,#'0'
+        ADD     R14,R14,#'0':SHL:8
+      |
         TEQ     R5,R6
         TEQEQ   R5,#"1"                         ; 1 os unit to a pixel mode
         MOVEQ   R5,#"2"
@@ -3938,19 +4012,51 @@ getromsprites
 	TEQEQ	R2,#0
 	MOVEQ	R6,#"3"
 
-        ASSERT  ((:INDEX:romspr_suffix) :AND: 3) = 0
         ADD     R14,R5,R6,LSL #8
+      ]
+        ASSERT  ((:INDEX:romspr_suffix) :AND: 3) = 0
         STR     R14,romspr_suffix
 ;
+      [ Sprites11
+        SUB     sp,sp,#4
+01      ADD     R14,R5,R6,LSL #8
+        ADD     R14,R14,#'0'
+        ADD     R14,R14,#'0':SHL:8
+        STR     R14,[sp]
+        MOV     R0,sp
+      ]
         ADR     R1,spritesfname
         BL      getspritefname          ; R1 -> <filename><x><y><bpp>
                                         ; R2 -> terminator
         MOV     R0,#OSFind_ReadFile
         SWI     XOS_Find
 ;
+      [ Sprites11
+        BVC     %FT04
+
+        TEQ     R6,#3
+        MOVEQ   R6,#2
+        BEQ     %BT01                   ; after Sprites23, try Sprites22
+
+        CMP     R5,R6
+        MOVLO   R5,R5,LSL#1
+        MOVHI   R6,R6,LSL#1
+        BNE     %BT01                   ; after rectangular pixels, try next squarer version
+
+        TEQ     R5,#1
+        MOVEQ   R5,#2
+        MOVEQ   R6,#2
+        BEQ     %BT01                   ; after Sprites11, try Sprites22
+
+        ADR     R1,spritesfname         ; R1 -> original filename
+        MOV     R0,#OSFind_ReadFile     ; try again!
+        SWI     XOS_Find
+04      ADD     sp,sp,#4
+      |
         ADRVS   R1,spritesfname         ; R1 -> original filename
         MOVVS   R0,#OSFind_ReadFile     ; try again!
         SWIVS   XOS_Find
+      ]
         BVS     %FT99                   ; error!
 ;
         MOV     R3,R0                   ; save external file handle
@@ -5205,8 +5311,7 @@ int_commandwindow
         BL      checkhandle             ; give up now!
         Pull    "R7,PC",VS
 ;
-        CMP     R0, #0
-        CMPNE   R0, #-1
+        CMP     R0, R0, ASR #31
         BEQ     releasewrch             ; R0 = 0 or -1 ==> remove window
         CMP     R0,#1
         BEQ     treatasactive           ; R0 = 1 ==> treat as open
@@ -5220,6 +5325,10 @@ int_commandwindow
         STR     R14,[handle,#w_title+4]         ; no validation string
         MOV     R14,#1
         STR     R14,[handle,#w_title+8]         ; length 1 will do
+;
+ [ true
+        BL      resizecommandwindow
+ ]
 ;
         BL      commandtextwindow       ; do this now so text width correct
 ;                                       ; NB must be done BEFORE OS_Claim!
@@ -5475,6 +5584,54 @@ mywrch
         SWI     XOS_WriteI+15           ; scroll mode off!
 ;
         Pull    "R0-R11,PC"             ; pass on the character
+
+ [ true
+resizecommandwindow
+        Push    "R1,cx0-cy1,handle,LR"
+        LDR     cy1,scry1
+        LDR     R0,textysize
+        ADD     cy1,cy1,R0
+        BIC     cy1,cy1,R0              ; ensure top aligned if odd number of rows
+        MOV     R1,cy1,LSR #1
+        SUB     R1,R1,cy1,LSR #4
+        ADD     R1,R1,cy1,LSR #6
+        SUB     R1,R1,cy1,LSR #8        ; 0.45 * screen height (or pretty close to)
+        DivRem  cy0,R1,R0,R14
+        BIC     cy0,cy0,#1              ; round down to even number of rows
+        MUL     cy0,R0,cy0              ; scale back to OS units
+        CMP     cy0,#1024
+        MOVHI   cy0,#1024               ; cap at 1024 OS units
+
+        LDR     cx1,scrx1
+        BIC     cx1,cx1,R0              ; ensure left aligned if odd number of columns
+        LDR     R0,textxsize
+        SUB     R1,cx1,cx1,LSR #2       ; 0.75 * screen width
+        DivRem  cx0,R1,R0,R14
+        BIC     cx0,cx0,#1              ; round down to even number of columns
+        MUL     cx0,R0,cx0              ; scale back to OS units
+        CMP     cx0,#1280
+        MOVHI   cx0,#1280               ; cap at 1280 OS units
+
+        LDR     R0,commandhandle
+        Abs     handle,R0
+        MOV     R14,#-12                ; 12 pixels above first line
+        SUB     R14,R14,cy0             ; min extent
+        STR     cx0,[handle,#w_wex1]
+        STR     R14,[handle,#w_wey0]
+
+        MOV     cy1,cy1,LSR #1          ; centre
+        MOV     cx1,cx1,LSR #1
+        MOV     R1,cy0,LSR #1
+        MOV     R0,cx0,LSR #1
+        SUB     cy0,cy1,R1
+        ADD     cy1,cy1,R1
+        SUB     cx0,cx1,R0
+        ADD     cx1,cx1,R0
+        ADD     cy1,cy1,#12             ; 12 pixels above first line
+        ADD     R0,handle,#w_wax0
+        STMIA   R0,{cx0-cy1}
+        Pull    "R1,cx0-cy1,handle,PC"
+ ]
 
 commandtextwindow
         Push    "R1-R11,LR"
