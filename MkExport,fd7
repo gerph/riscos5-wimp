@@ -13,4 +13,5 @@
 | limitations under the License.
 |
 Dir <Obey$Dir>
-amu_machine export
+amu_machine export PHASE=hdrs
+amu_machine export PHASE=libs
