@@ -2868,6 +2868,8 @@ inittasks
       ]
       [ NCErrorBox
         ADRL    R14, ptrsuspendflag
+        STR     R0, [R14], #4
+        ASSERT  ptrpreserveflag = ptrsuspendflag + 4
         STR     R0, [R14]
       ]
 ;
