@@ -1144,6 +1144,9 @@ setcaretcoords_fancy TraceL sc
         BGT     %FT02                   ; past the caret point? don't count the partial character (matches font mgr)
         ADD     R3, R3, #1
         BEQ     %FT02                   ; at the caret point?
+        LDRB    R14, [R2]               ; reached terminator before byte count?
+        CMP     R14, #' '               ;   yes, don't increment R3 any more (avoids infinite loop here in UTF8 case
+        BLO     %FT02                   ;   and running off the top of the SVC stack below in non-UTF8 case)
         BL      skipcharR
         B       %BT01
 02      ; Now have R3 = printable character count, find that byte index into pushed string
@@ -5660,7 +5663,13 @@ fixupfontstring_end
         LDR     R1, redrawhandle
         BIC     R1, R1, #3
         LDR     R1, [R1, #w_x1]
+      [ ThreeDPatch
+        LDR     R14, arrowIconWidth
+        SUB     R1, R1, #16 - 6 ; portion of excess text icon width on right
+        SUB     R1, R1, R14
+      |
         SUB     R1, R1, #24 + (16 - 6) ;width of arrow + portion of excess text icon width on right
+      ]
         TraceK  menuw, "fixupfontstring: moving to ("
         TraceD  menuw, R1
         TraceK  menuw, ", "

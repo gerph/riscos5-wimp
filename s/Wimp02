@@ -4385,8 +4385,8 @@ int_deleteicon
         LDR     R3,[handle,#w_nicons]
         LDR     R0,[handle,#w_icons]
         ADD     R0,R0,R2,ASL #i_shift
-        SUB     R14,R3,#1                       ; compare with no. of icons-1
-        CMP     R2,R14
+        ADD     R14,R2,#1                       ; compare number of icons up to and including this handle
+        CMP     R14,R3                          ;   with number of icons
         Pull    "R1-R3,R6,PC",HI                ; deleted (doesn't exist)
         LDRLO   R14,[R0,#i_flags]
         ORRLO   R14,R14,#is_deleted

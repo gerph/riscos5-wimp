@@ -1840,6 +1840,7 @@ icontext TraceL font
 
 	LDR	r14,ThreeDFlags
 	TST	r14,#ThreeDFlags_RemoveIconBackgrounds
+	BEQ     %FT92
 
 	MOV	r0,r1,LSR #ib_bcol
 	LDR	handle,redrawhandle

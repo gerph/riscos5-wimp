@@ -366,7 +366,9 @@ TileInfo				*	@
 ThreeDFlags_Default			*	&FFFFFFFF :AND::NOT: (ThreeDFlags_NoFontBlending :OR: ThreeDFlags_FullIconClipping)
  |
                                         ; you have to be kidding - use sane defaults
-ThreeDFlags_Default                     *       ThreeDFlags_NoFontBlending
+ThreeDFlags_Default                     *       ThreeDFlags_RemoveIconBackgrounds :OR: \
+                                                ThreeDFlags_NoFontBlending
+ThreeDFlags_All                         *       :NOT: ThreeDFlags_NoFontBlending
  ]
 ThreeDFlags_Use3DBorders		*	1<<0	; set to indicate the user wants 3D borders if they are configured
 ThreeDFlags_UseAlternateMenuTexture	*	1<<1
@@ -375,7 +377,7 @@ ThreeDFlags_RemoveIconBackgrounds	*	1<<3
 ThreeDFlags_TexturedMenus		*	1<<4
 ThreeDFlags_NoIconBgInTransWindows	*	1<<5
 ThreeDFlags_NoFontBlending		*	1<<6
-ThreeDFlags_FullIconClipping		*	1<<7
+ThreeDFlags_FullIconClipping		*	1<<7    ; we're just ignoring this flag
 
 arrowIconWidth_No3D     *       24
 arrowIconWidth_3D       *       32
@@ -2122,29 +2124,29 @@ WimpClickSubmenuC_Syntax        DCB "Syntax: *Configure WimpClickSubmenu On|Off"
 	[ ThreeDPatch
 WimpVisualFlags_Help		DCB "Change the visual appearance of the desktop.",cr
 				DCB "-3DWindowBorders",cr
-				DCB "	Give all menus and dialog boxes a 3D border.",cr
+				DCB "   Give all menus and dialogue boxes a 3D border.",cr
 				DCB "-TexturedMenus",cr
-				DCB "	Give all menus a textured background.",cr
+				DCB "   Give all menus a textured background.",cr
 				DCB "-UseAlternateMenuBg",cr
-				DCB "	Use a different background tile for menus.",cr
+				DCB "   Use a different background tile for menus.",cr
 				DCB "-RemoveIconBoxes",cr
-				DCB "	Remove the filled box from behind the text in text+sprite icons.",cr
+				DCB "   Remove the filled box from behind the text in text+sprite icons.",cr
 				DCB "-NoIconBoxesInTransWindows",cr
-				DCB "	Remove the filled box from icons on windows similar to the pinboard.",cr
+				DCB "   Remove the filled box from icons on windows similar to the pinboard.",cr
 				DCB "-Fully3DIconBar",cr
-				DCB "	Make the iconbar have a full 3D border.",cr
-				DCB "-NoFontBlending",cr
-				DCB "   Don't use font blending in icons.
+				DCB "   Make the iconbar have a full 3D border.",cr
+				DCB "-FontBlending",cr
+				DCB "   Use font blending in icons.",cr
 				DCB "-All",cr
-				DCB "	Turn all flags on.",cr
+				DCB "   Turn all flags on.",cr
 				DCB "-WindowBorderFaceColour <&RRGGBB>",cr
-				DCB "	Set the colour of the top left portion of the window border.",cr
+				DCB "   Set the colour of the top left portion of the window border.",cr
 				DCB "-WindowBorderOppColour <&RRGGBB>",cr
 				DCB "   Set the colour of the bottom right portion of the window border.",cr
 				DCB "-MenuBorderFaceColour <&RRGGBB>",cr
-				DCB "	Set the colour of the top left portion of the menu border.",cr
+				DCB "   Set the colour of the top left portion of the menu border.",cr
 				DCB "-MenuBorderOppColour <&RRGGBB>",cr
-				DCB "	Set the colour of the bottom right portion of the menu border.",0
+				DCB "   Set the colour of the bottom right portion of the menu border.",0
 WimpVisualFlags_Syntax		DCB "Syntax: *WimpVisualFlags <options>",0
 	]
                         ALIGN
@@ -6944,7 +6946,7 @@ WimpKillSprite_Code
 	DCB	"NoIconBoxesInTransWindows=NIBITW/S,Fully3DIconBar=F3DIB/S,All=A/S,"
 	DCB	"WindowBorderFaceColour=WBFC/E,WindowBorderOppColour=WBOC/E,"
 	DCB	"MenuBorderFaceColour=MBFC/E,MenuBorderOppColour=MBOC/E,"
-	DCB	"NoFontBlending=NFB/S",0
+	DCB	"NoFontBlending=NFB/S,FontBlending=FB/S",0
 	ALIGN
 
 WimpVisualFlags_Code
@@ -6952,7 +6954,7 @@ WimpVisualFlags_Code
 	LDR	r12,[r12]
 
 	TEQ	r1,#0
-	MOVEQ   r1,#ThreeDFlags_NoFontBlending
+	MOVEQ   r1,# :NOT: ThreeDFlags_All
 	STREQ	r1,ThreeDFlags		; if no options are supplied then turn everything off
 	MOVEQ   lr,#arrowIconWidth_No3D
 	STREQB  lr,arrowIconWidth
@@ -6967,7 +6969,7 @@ WimpVisualFlags_Code
 	ADDVS	sp,sp,#256
 	Pull	"r12,pc",VS
 
-	MOV	r2,#0
+	MOV	r2,# :NOT: ThreeDFlags_All
 	LDR	r1,[sp,#0]
 	TEQ	r1,#0
 	ORRNE	r2,r2,#ThreeDFlags_Use3DBorders
@@ -6989,12 +6991,12 @@ WimpVisualFlags_Code
 	LDR	r1,[sp,#20]
 	TEQ	r1,#0
 	ORRNE	r2,r2,#ThreeDFlags_Fully3DIconBar
-	LDR	r1,[sp,#44]
-	TEQ	r1,#0
-	ORRNE	r2,r2,#ThreeDFlags_NoFontBlending
+;	LDR	r1,[sp,#44]
+;	TEQ	r1,#0
+;	ORRNE	r2,r2,#ThreeDFlags_NoFontBlending ; bit is already set!
 	LDR	r1,[sp,#48]
 	TEQ	r1,#0
-	ORRNE	r2,r2,#ThreeDFlags_FullIconClipping
+	BICNE	r2,r2,#ThreeDFlags_NoFontBlending
 
 	LDR	r1,[sp,#28]		; window border face colour
 	BL	%FT02
@@ -7018,7 +7020,7 @@ WimpVisualFlags_Code
 
 	LDR	r1,[sp,#24]		; all
 	TEQ	r1,#0
-	MOVNE	r2,#&FFFFFFFF :EOR: ThreeDFlags_NoFontBlending
+	MOVNE	r2,#ThreeDFlags_All
 	MOVNE   lr,#arrowIconWidth_3D
 	STRNEB  lr,arrowIconWidth
 
