@@ -35,6 +35,20 @@
 ; mjs
 ;
 
+
+ [ :LNOT: KernelLocksFreePool
+; These magic addresses are no longer in the PublicWS header - indeed, they are
+; no longer fixed addresses since Tungsten. Fortunately, the relevant code was
+; moved to the kernel in Ursula, so for all OSes that need them, the addresses
+; can be considered to be constant.
+                    ^ &01F033FC
+SvcTable            #      &400
+
+                    ^ &01F037FC
+BranchToSWIExit     #         4           ; from SWI despatcher
+ ]
+
+
         GBLS    LoadWimp08s
 
  [ UseAMBControl

@@ -2992,7 +2992,7 @@ sellp
         B       sellp
 
 dontcancel
-        LDR     R2,[R13,#8]             ; get button state again!
+        LDR     R2,[R13,#Proc_RegOffset+8] ; get button state again!
         TST     R2,#button_right
         MOVNE   R2,#0
         BNE     goselect                ; invert state if using ADJUST
@@ -3008,7 +3008,7 @@ goselect
         BL      int_set_icon_state
 ;
 exitselect
-        STRVS   R0,[R13]
+        STRVS   R0,[R13,#Proc_RegOffset]
         EXITV                           ; preserve V
 
 
