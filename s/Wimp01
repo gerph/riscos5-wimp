@@ -2130,7 +2130,7 @@ WimpClickSubmenuC_Help          DCB "*Configure WimpClickSubmenu sets whether cl
 WimpClickSubmenuC_Syntax        DCB "Syntax: *Configure WimpClickSubmenu On|Off",0
         ]
 	[ ThreeDPatch
-WimpVisualFlags_Help		DCB "*WimpVisualFlags will change some aspects of the visual appearance of the desktop.",cr
+WimpVisualFlags_Help		DCB "*WimpVisualFlags changes some aspects of the visual appearance of the desktop.",cr
 				DCB "-3DWindowBorders",cr
 				DCB "   Give all menus and dialogue boxes a 3D border.",cr
 				DCB "-TexturedMenus",cr
