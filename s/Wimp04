@@ -5202,7 +5202,7 @@ int_set_icon_state
         TST     R14,#if_text
         BEQ     uiclp
 
- [ BlendedFonts
+ [ BlendedFonts :LAND: RO4
 	; any selectable text+sprite icons must be fully redrawn
 	LDR	r0,ThreeDFlags
 	TST	r0,#ThreeDFlags_NoFontBlending

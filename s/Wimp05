@@ -3681,7 +3681,7 @@ crmenuiconlp
         Debug   menuparam,"menu flags, ptr",R4,R5
 
         MOV     x0,#0
-      [ RO4
+      [ ThreeDPatch
         LDRB    x1,arrowIconWidth
       |
         MOV     x1,#24
@@ -3689,7 +3689,7 @@ crmenuiconlp
         LDR     R1,reversedmenu         ; Is it a reversed menu?
         CMP     R1,#"\\"
         LDREQ   x0,menuiconwidth        ; Put it where the arrow is
-      [ RO4
+      [ ThreeDPatch
         LDREQB  R1,arrowIconWidth
         ADDEQ   x0,x0,R1                ; supposed to be.
         ADDEQ   x1,x0,R1
@@ -3803,7 +3803,7 @@ crmenuiconlp
 ;        BIC     R1,R1,#if_buttontype
 
 ;        ORR     R1,R1,#13:SHL:ib_esg    ; set esg 13
-      [ RO4
+      [ ThreeDPatch
         LDRB    x0,arrowIconWidth
       |
         MOV     x0,#24
@@ -3818,7 +3818,7 @@ crmenuiconlp
 ; arrow
 
         MOV     x0,x1
-      [ RO4
+      [ ThreeDPatch
         LDRB    R1,arrowIconWidth
         ADD     x1,x0,R1                ; width of arrow icon
       |
@@ -3827,7 +3827,7 @@ crmenuiconlp
         LDR     R1,reversedmenu         ; Is it a reversed menu?
         CMP     R1,#"\\"
         MOVEQ   x0,#0                   ; Put it where tick is supposed to be
-      [ RO4
+      [ ThreeDPatch
         LDREQB  x1,arrowIconWidth
       |
         MOVEQ   x1,#24
@@ -3853,7 +3853,7 @@ crmenuiconlp
 
         BL      createmenuicon          ; #### check for errors!
         LDR     x0,menuiconwidth
-      [ RO4
+      [ ThreeDPatch
         LDRB    R14,arrowIconWidth
         ADD     x0,x0,R14
         ADD     x1,x0,R14

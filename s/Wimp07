@@ -1056,12 +1056,13 @@ returnerror
         LDRNE   R14,WimpPortableFlag
         TEQNE   R14,#0                  ; And the portable module present?
  ]
-        Push    "R0-R1",NE
-        MOVNE   R0,#0
-        MOVNE   R1,#0
-        SWINE   XPortable_Speed         ; if not a null event then make it go fast
-        Pull    "R0-R1",NE
-
+        BEQ     %FT01
+        Push    "R0-R1"
+        MOV     R0,#0
+        MOV     R1,#0
+        SWI     XPortable_Speed         ; if not a null event then make it go fast
+        Pull    "R0-R1"
+01
       [ debugtask3
         LDR     R14,singletaskhandle
         CMP     R14,#nullptr            ; if single-tasking,
@@ -1215,18 +1216,17 @@ returnerror
       [ No32bitCode
         LDR     R0,[R5,#task_registers+4*15]
       |
-        MRS     R0,CPSR
-        TST     R0,#2_11100                     ; 32-bit system?
-        LDREQ   R0,[R5,#task_registers+4*15]    ; 26-bit: modify R15
-        LDRNE   R0,[R5,#task_registers+4*16]    ; 32-bit: modify CPSR
+        TEQ     PC,PC                           ; 32-bit system?
+        LDRNE   R0,[R5,#task_registers+4*15]    ; 26-bit: modify R15
+        LDREQ   R0,[R5,#task_registers+4*16]    ; 32-bit: modify CPSR
       ]
         BICVC   R0,R0,#V_bit            ; set up correct V bit
         ORRVS   R0,R0,#V_bit
       [ No32bitCode
         STR     R0,[R5,#task_registers+4*15]   ; save for new task
       |
-        STREQ   R0,[R5,#task_registers+4*15]
-        STRNE   R0,[R5,#task_registers+4*16]
+        STRNE   R0,[R5,#task_registers+4*15]
+        STREQ   R0,[R5,#task_registers+4*16]
       ]
 ;
 ; set up callback handler
@@ -1291,13 +1291,10 @@ callbackpoll
 ;
 ; exit to caller
 ;
-        MOV     R0,#0
-        MRS     R0,CPSR
-        TST     R0,#2_11100                     ; are we 26 or 32-bit?
-
+        TEQ     PC,PC                           ; are we 26 or 32-bit?
         ADD     lr_svc,R4,#task_registers       ; lr_svc --> register block
-        LDRNE   R0,[lr_svc,#16*4]
-        MSRNE   SPSR_cxsf,R0
+        LDREQ   R0,[lr_svc,#16*4]
+        MSREQ   SPSR_cxsf,R0
         LDMIA   lr_svc,{R0-R14}^                ; restore USR regs
         NOP
         LDR     lr_svc,[lr_svc,#15*4]

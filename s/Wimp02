@@ -38,8 +38,10 @@ markinitialised
         STRPL   R14,pendingtask
         BPL     %FT02
 ;
+        Push    "R3"
         MOV     R3,#task_datasize
         BL      claimblock
+        Pull    "R3"
         BVS     %FT99
 ;
         MOV     R14,#nullptr            ; null slot if new task

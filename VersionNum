@@ -1,23 +1,23 @@
-/* (4.78)
+/* (4.79)
  *
  * This file is automatically maintained by srccommit, do not edit manually.
  * Last processed by srccommit version: 1.68.
  *
  */
-#define Module_MajorVersion_CMHG        4.78
+#define Module_MajorVersion_CMHG        4.79
 #define Module_MinorVersion_CMHG        
-#define Module_Date_CMHG                30 Oct 2002
+#define Module_Date_CMHG                31 Oct 2002
 
-#define Module_MajorVersion             "4.78"
-#define Module_Version                  478
+#define Module_MajorVersion             "4.79"
+#define Module_Version                  479
 #define Module_MinorVersion             ""
-#define Module_Date                     "30 Oct 2002"
+#define Module_Date                     "31 Oct 2002"
 
-#define Module_ApplicationDate          "30-Oct-02"
+#define Module_ApplicationDate          "31-Oct-02"
 
 #define Module_ComponentName            "Wimp"
 #define Module_ComponentPath            "RiscOS/Sources/Desktop/Wimp"
 
-#define Module_FullVersion              "4.78"
-#define Module_HelpVersion              "4.78 (30 Oct 2002)"
-#define Module_LibraryVersionInfo       "4:78"
+#define Module_FullVersion              "4.79"
+#define Module_HelpVersion              "4.79 (31 Oct 2002)"
+#define Module_LibraryVersionInfo       "4:79"

@@ -349,7 +349,7 @@ SWIWimp_Poll
         LDREQ   R14,=masknewcodes
         ORREQ   R0,R0,R14               ; disallow new reason codes
 
-; set up R3 -> poll word, with top bit set => urgent
+; set up R3 -> poll word, with bottom bit set => urgent
 ; also validate R0,R3 (but only if task knows about Wimp 2.23)
 
         LDR     R14,[R4,#task_wimpver]

@@ -11,13 +11,13 @@
                         GBLS    Module_HelpVersion
                         GBLS    Module_ComponentName
                         GBLS    Module_ComponentPath
-Module_MajorVersion     SETS    "4.78"
-Module_Version          SETA    478
+Module_MajorVersion     SETS    "4.79"
+Module_Version          SETA    479
 Module_MinorVersion     SETS    ""
-Module_Date             SETS    "30 Oct 2002"
-Module_ApplicationDate  SETS    "30-Oct-02"
+Module_Date             SETS    "31 Oct 2002"
+Module_ApplicationDate  SETS    "31-Oct-02"
 Module_ComponentName    SETS    "Wimp"
 Module_ComponentPath    SETS    "RiscOS/Sources/Desktop/Wimp"
-Module_FullVersion      SETS    "4.78"
-Module_HelpVersion      SETS    "4.78 (30 Oct 2002)"
+Module_FullVersion      SETS    "4.79"
+Module_HelpVersion      SETS    "4.79 (31 Oct 2002)"
                         END
