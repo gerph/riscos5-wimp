@@ -192,6 +192,8 @@ WimpFilter_PrePoll              #       1
 WimpFilter_PostPoll             #       1
 WimpFilter_BlockCopy            #       1
 WimpFilter_GetRectangle         #       1
+WimpFilter_PostGetRectangle	#	1
+WimpFilter_PostIconGetRectangle #	1
 WimpFilter_MAX                  #       0
 
 

@@ -243,6 +243,7 @@ wimpspritepool
         ]
 
 allocatespritememory
+      [ UseDynamicArea
         Push    "R1,R8,LR"
 
         TEQ     R0,#ModHandReason_Claim
@@ -261,6 +262,11 @@ allocatespritememory
 
         MyXError WimpNoSprites
         Pull    "R1,R8,PC"
+      |
+	Push	"LR"
+	SWI	XOS_Module
+	Pull	"PC"
+      ]
 
         MakeErrorBlock WimpNoSprites
 

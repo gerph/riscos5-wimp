@@ -201,17 +201,6 @@ $lab
         TEQNE   $c, #:CHR: 13
         MEND
 
-;----------------------------------------
-; MedusaOS sets Z flag if running under Medusa Kernel
-;
-        MACRO
-$lab    MedusaOS
-        Push    "R0"
-        LDRB    R0,medusakernel
-        CMP     R0,#1
-        Pull    "R0"
-        MEND
-
         MACRO
 $lab    ReportInformation       $info
         Push    "R0-R5,lr"
@@ -224,6 +213,25 @@ $lab    ReportInformation       $info
         SWI     XWimp_ReportError
         Pull    "R0-R5,lr"
         MEND
+
+;----------------------------------------
+; Option introduces and sets an option neatly
+;
+	MACRO
+	Option	$name,$value
+      [ :LNOT::DEF:$name
+	GBLL	$name
+      ]
+$name	SETL	$value
+	MEND
+
+;----------------------------------------
+; OptionD introduces and sets an debug option neatly
+;
+	MACRO
+	OptionD	$name,$value
+	Option	debug$name,$value:LAND:debug
+	MEND
 
 
         END

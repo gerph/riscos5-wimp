@@ -456,7 +456,7 @@ tryfindicon
 ;
 
 recalcposns
-        Push    "R1-R8,LR"
+        Push    "R1-R9,userblk,LR"
 ;
         ADR     R8,iconbarleft          ; R8 --> other section
         TEQ     R8,R7
@@ -573,7 +573,12 @@ doneicons
         CMP     R0,R14
         MOVGT   R0,R14
 ;
+; Poke these directly to stop the Wimp attempting to do a block copy
+;
         STR     R0,[handle,#w_scx]              ; poke direct! (pixel aligned)
+      [ ChildWindows
+        STR     R0,[handle,#w_old_scx]          ; also old position
+      ]
 ;
       [ debugicb
         ADD     R14,handle,#w_wax0
@@ -589,7 +594,7 @@ doneicons
         MOV     y1,#bignum
         BL      int_force_redraw                ; mark invalid
 ;
-        Pull    "R1-R8,PC"
+        Pull    "R1-R9,userblk,PC"
 
         [ true
 
@@ -623,13 +628,7 @@ resizeicons_loop
         LDR     R0,[R2,#icb_taskhandle]
         CMP     R0,#0
         BLT     %FT05
-        [ false
-        MedusaOS
-        MOVNE   R14,#16*1024*1024                ; in module space? APPSPACE
-        LDREQ   R14,orig_applicationspacesize
-        |
         LDR     R14,orig_applicationspacesize
-        ]
         CMP     R14,R1
         BLGT    mapslotinout
 ; so that indirected data is ok. Now R1-> text
