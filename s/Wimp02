@@ -83,8 +83,15 @@ markinitialised
         BLO     %FT01                   ; ignore the messages if not a valid task
 
         CMP     R3,R3,ASR #31           ; is the handle valid? (-1 pointer still means all messages, for compatibility)
-        STREQ   R3,[R2,#task_messages]
-        BLNE    addmessages             ; add messages as required
+        MOVEQ   R14,R3                  ; set all or no messages
+        MOVNE   R14,#0                  ; set no messages prior to calling addmessages
+        STR     R14,[R2,#task_messages]
+        BEQ     %FT01
+        BL      addmessages             ; add messages as required
+        LDR     R14,[R2,#task_messages]
+        TEQ     R14,#0                  ; if still no messages
+        MOVEQ   R14,#-1
+        STREQ   R14,[R2,#task_messages] ; then they actually wanted all of them
 01
       [ Swapping                        ; Things to be done only if swapping is enabled.
         ADRL    R1,swapping
@@ -4113,11 +4120,11 @@ update_pointer_shape_for_icon_create
 	ADD	x0,userblk,#4
 	LDMIA	x0,{x0-y1}
 	CMP	r5,x0
-	CMPGT	lr,y0
+	CMPGE	lr,y0
 	Pull	"r5,x0-y1,pc",LT
 	CMP	r5,x1
-	CMPLT	r5,y1
-	Pull	"r5,x0-y1,pc",GT
+	CMPLT	lr,y1
+	Pull	"r5,x0-y1,pc",GE
 		; pointer is over the new icon
 	LDR	R5,mouseflags
         TST     R5,#mf_wait2clicks              ; reset pointer shape if nec.
@@ -4134,7 +4141,7 @@ update_pointer_shape_for_icon_create
 
         MOV     r2,#WimpValidation_Pointer
         LDR     r3,[userblk,#i_data+4 + 4]      ; Pointer to validation string.
-        CMP     r3,r2,ASR #31
+        CMP     r3,r3,ASR #31
         Pull    "r0-r5,x0-y1,pc",EQ
         BL      findcommand
         Pull	"r0-r5,x0-y1,pc",NE

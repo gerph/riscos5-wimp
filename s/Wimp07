@@ -289,6 +289,8 @@ check_mem_message
         LDRGT   R14,[R14,#task_flagword]
         MOVGT   R14,R14,LSR #flag_versionbit
         ORRGT   R2,R2,R14,LSL #flag_versionbit
+        CMP     R0,#nullptr
+        LDRNE   R0,[R0,#msb_link]       ; skip first message on stack - it may already have been delivered to some tasks
 05
         CMP     R0,#nullptr
         BEQ     %FT99
