@@ -366,7 +366,7 @@ textop_truncate
         BNE     %BT11
         CMP     r3,#0
         Pull    "pc", EQ
-        ADR     r1,ellipsis
+        ADRL    r1,ellipsis
 12      LDRB    r14,[r1],#1
         STRB    r14,[r2],#1
         SUB     r5,r5,#1
@@ -438,7 +438,7 @@ measure_ellipsis ; called from FindFont, sets things up for textop_truncate
         MOV     r4,#0
         MOV     r5,#-1
         Push    "r1-r5"
-        ADR     r1,ellipsis
+        ADRL    r1,ellipsis
         LDR     r2,=1:SHL:18 :OR: 1:SHL:8 :OR: 1:SHL:5
         MOV     r3,#bignum/16
         MOV     r4,#bignum/16

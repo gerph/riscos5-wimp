@@ -4807,9 +4807,9 @@ setmenucaret TraceL sc
         BEQ     donemenucaret
 
         CMP     R14,#nullptr            ; unless it's a menu icon, remember it
-        ADREQ   R14,caretdata
+        ADREQL  R14,caretdata
         LDMEQIA R14,{R0-R5}
-        ADREQ   R14,oldcaretdata
+        ADREQL  R14,oldcaretdata
         STMEQIA R14,{R0-R5}
 
         pullx   "R0-R5"
@@ -4832,7 +4832,7 @@ unsetmenucaret TraceL sc
 
         MOV     R14,#nullptr
         STR     R14,menucaretwindow     ; and cancel menu caret flag
-        ADR     R14,oldcaretdata
+        ADRL    R14,oldcaretdata
         LDMIA   R14,{R0-R5}             ; R2 will be recomputed if it's an icon
         BL      int_set_caret_position
 
