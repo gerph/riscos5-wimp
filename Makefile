@@ -73,22 +73,23 @@ resources: resources-${CMDHELP}
 
 resources_common:
 	${MKDIR} ${RESDIR}.${COMPONENT}
-	${CP} Resources.${LOCALE}.Messages ${RESDIR}.${COMPONENT}.Messages ${CPFLAGS}
-	${CP} Resources.${LOCALE}.<System>.Templates ${RESDIR}.${COMPONENT}.Templates ${CPFLAGS}
-	${CP} Resources.${LOCALE}.<System>.Sprites ${RESDIR}.${COMPONENT}.Sprites ${CPFLAGS}
-	-${CP} Resources.${LOCALE}.<System>.Sprites22 ${RESDIR}.${COMPONENT}.Sprites22 ${CPFLAGS}
-	-${CP} Resources.${LOCALE}.<System>.TileN ${RESDIR}.${COMPONENT}.TileN ${CPFLAGS}
-	-${CP} Resources.${LOCALE}.<System>.TileV ${RESDIR}.${COMPONENT}.TileV ${CPFLAGS}
-	${CP} Resources.${LOCALE}.<System>.Tools ${RESDIR}.${COMPONENT}.Tools ${CPFLAGS}
+	${CP} LocalRes:<UserIF>.Messages ${RESDIR}.${COMPONENT}.Messages ${CPFLAGS}
+	${CP} LocalRes:<UserIF>.Templates ${RESDIR}.${COMPONENT}.Templates ${CPFLAGS}
+	${CP} LocalRes:<UserIF>.Sprites ${RESDIR}.${COMPONENT}.Sprites ${CPFLAGS}
+	-${CP} LocalRes:<UserIF>.Sprites22 ${RESDIR}.${COMPONENT}.Sprites22 ${CPFLAGS}
+	-${CP} LocalRes:<UserIF>.TileN ${RESDIR}.${COMPONENT}.TileN ${CPFLAGS}
+	-${CP} LocalRes:<UserIF>.TileV ${RESDIR}.${COMPONENT}.TileV ${CPFLAGS}
+	${CP} LocalRes:<UserIF>.Tools ${RESDIR}.${COMPONENT}.Tools ${CPFLAGS}
 
 resources-None: resources_common
 	@
 
 resources-: resources_common
-	print Resources.${LOCALE}.CmdHelp { >> ${RESDIR}.${COMPONENT}.Messages }
+	print LocalRes:<UserIF>.CmdHelp { >> ${RESDIR}.${COMPONENT}.Messages }
 
 ${TARGET}: ${SOURCE}
 	${AS} ${ASFLAGS} ${SOURCE}
+	Access ${TARGET} rw/rw
 
 ${EXP_HDR}.Wimp: hdr.Wimp
 	${CP} hdr.Wimp $@ ${CPFLAGS}

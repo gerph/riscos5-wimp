@@ -364,7 +364,6 @@ initfirsttask
         MOV     R2,WsPtr
         SWI     XOS_CallEvery           ; install handler
 01
-    [ Version >= 317
         [ mousecache
         MOV     R0,#TickerV
         ADRL    R1,MouseCallEveryHandler
@@ -395,7 +394,6 @@ initfirsttask
       [ outlinefont
         BL      FindFont                ; recache the system font (if possible!)
       ]
-    ]
 ;
         CLRV
         Pull    "R0-R2"
@@ -617,7 +615,7 @@ CallEveryHandler ENTRY "R0"
 ; co-ordinates to be re-read at a suitable point so that we do not
 ; continually poll the Window Manager.
 
-      [ Version >= 317 :LAND: mousecache
+      [ mousecache
 
 MouseCallEveryHandler ENTRY ""
 
@@ -921,7 +919,7 @@ exitinit
         MOVVC   R0,#-1                  ; then get rid of it if no errors!
         SWIVC   XWimp_CommandWindow
 ;
-        LDRVC   R0,=Version     ; R0 = Wimp version number
+        LDRVC   R0,=Module_Version      ; R0 = Wimp version number
         B       ExitWimp
         LTORG
 
@@ -2461,7 +2459,6 @@ closelast
         ADRL    R1,UpCallCode
         BL      release
 ;
-    [ Version >= 317
         [ mousecache
         MOV     R0,#TickerV             ; tidy the mouse handler
         ADRL    R1,MouseCallEveryHandler
@@ -2487,7 +2484,6 @@ closelast
       [ outlinefont
         BL      LoseFont                ; release the font (if claimed!)
       ]
-    ]
 ;
         ADR     R14,wimpquithandler
         LDMIA   R14,{R1-R3}
@@ -2729,10 +2725,8 @@ inittasks
         SUBS    R6,R6,#1
         BNE     inittasks
 
-      [ Version >= 311
         ADR     R14, PollTasks
         STR     R14, PollTaskPtr        ; No tasks in pollword list
-      ]
 ;
         MOV     R14,#0                  ; no tasks alive
         STR     R14,taskcount
@@ -2883,9 +2877,6 @@ inittasks
         LDR     R14,=:INDEX:taskpointers
         STR     R14,taskhandle          ; points to task pointer array
         STR     R14,nulltaskhandle
- [ Version < 311
-        STR     R14,pollwordtaskhandle
- ]
 ;
         MOV     R0,#0
         STR     R14,[R0,#&FF8]          ; for Stuart
@@ -4043,13 +4034,11 @@ int_delete_window
 
 ; If window has active icon then attempt to release it - fixes address exception on window deleetion
 
-      [ Version >= 317
         LDR     R14,border_windowselected
         TEQ     R14,handle
 	MOVEQ	R14,#nullptr
         STREQ   R14,border_iconselected
         STREQ   R14,border_windowselected
-      ]
 
         Push    "R0"                    ; relative handle
         BL      int_close_window
@@ -5310,7 +5299,7 @@ calctoggle
         LDR     y1,scry1                ; x1,y1 = max window outline size
       ]
 ;
-      [ Version >= 317 :LAND: togglebits
+      [ togglebits
         CMP     cx0,cx1                 ; is it as wide as it can be?
         CMPLT   x0,x1
         BICLT   R14,R1,#ws_toggled :OR: ws_toggling :OR: ws_toggled2
@@ -7835,7 +7824,7 @@ redrawoutlp_done_tracing
 	LDR	R14,border_windowselected
 	TEQ	R14,handle
 	BNE	%FT08
-      [ Version >= 317 :LAND: togglebits
+      [ togglebits
         TST     R3,#ws_toggled :OR: ws_toggled2
       |
         TST     R3,#ws_toggled
@@ -7844,7 +7833,7 @@ redrawoutlp_done_tracing
 	LDRNE	R2,[R4,#tool_ptoggle1]
 	B	%FT09
 08
-      [ Version >= 317 :LAND: togglebits
+      [ togglebits
         TST     R3,#ws_toggled :OR: ws_toggled2
       |
         TST     R3,#ws_toggled
@@ -7855,7 +7844,7 @@ redrawoutlp_done_tracing
         BLNE    draw_spriteglyph        ; plot an suitable icon for the gadget then
         BNE     %FT01
 05
-      [ Version >= 317 :LAND: togglebits
+      [ togglebits
         TST     R3,#ws_toggled :OR: ws_toggled2
       |
         TST     R3,#ws_toggled
@@ -8507,7 +8496,7 @@ getvscrollcoords
         SUB     cy0,y1,R0               ; lower coordinate
 ;
         LDRB    R1,scroll_minlength     ; min size of v scroll bar
-      [ Version >= 317 :LAND: hvblip
+      [ hvblip
         LDR     R14,vscroll_blipheight
         ADD     R1,R1,R14
         LDR     R14,dy
@@ -8553,7 +8542,7 @@ getvscrollcoords
         SUB     R0,R0,R14,LSL #1
         LDRB    R1,scroll_minlength
 
-      [ Version >= 317 :LAND: hvblip
+      [ hvblip
         LDR     R14,vscroll_blipheight
         ADD     R1,R1,R14
         LDR     R14,dy
@@ -8639,7 +8628,7 @@ gethscrollcoords
         ADD     cx1,x0,R0               ; right-hand coordinate
 ;
         LDRB    R1,scroll_minlength
-      [ Version >= 317 :LAND: hvblip
+      [ hvblip
         LDR     R14,hscroll_blipwidth
         ADD     R1,R1,R14
         LDR     R14,dx
@@ -8684,7 +8673,7 @@ gethscrollcoords
         SUB     R0,R0,R14,LSL #1
         LDRB    R1,scroll_minlength
 
-      [ Version >= 317 :LAND: hvblip
+      [ hvblip
         LDR     R14,hscroll_blipwidth
         ADD     R1,R1,R14
         LDR     R14,dx

@@ -3218,10 +3218,8 @@ cachespritedata
       ]
         BVS     %FT90                   ; return if not important
 
-      [ Version >= 317
         CMP     R6,#256
         BHI     %FT40                   ; if its greater than 8bpp then we can ignore it (was GT)
-      ]
 
 35      SUBS    R6,R6,#1                ; decrease the index into the table
         BMI     %FT90                   ; return if end of the world reached
@@ -6250,7 +6248,7 @@ minscrx
         ADD     R0,R0,x1                        ; allow for scroll arrows
 ;<<<       ADD     R0,R0,x1,LSL #1                 ; allow for 2 scroll arrows
 ;
-      [ Version >= 317 :LAND: hvblip
+      [ hvblip
         LDR     x1,hscroll_blipwidth
         ADD     R0,R0,x1
       ]
@@ -6317,7 +6315,7 @@ minwindowy
         ADD     R14,R14,y1              ; allow for scroll arrows
 ;<<        ADD     R14,R14,y1,LSL #1       ; allow for 2 scroll arrows
 ;
-      [ Version >= 317 :LAND: hvblip
+      [ hvblip
         LDR     y1,vscroll_blipheight
         ADD     R14,R14,y1
       ]
