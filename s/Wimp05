@@ -3413,11 +3413,21 @@ trymenusdeleted
 ; Out   R14 = menu root pointer (or dbox window handle)
 
 getmenuroot
-        EntryS
+      [ No32bitCode
+        Entry
+      |
+        Entry   "R0"
+        MRS     R0,CPSR
+      ]
         LDR     R14,menudata            ; if menu owner changing,
         TST     R14,#3
         SUBEQ   R14,R14,#m_header       ; correct for header if menu ptr
+      [ No32bitCode
         EXITS
+      |
+        MSR     CPSR_f,R0
+        EXIT
+      ]
 
 ; In    [menuSP] >= 0 => there is a menu tree
 ;         [menudata] = root node pointer of tree
@@ -3773,8 +3783,17 @@ crmenuiconlp
 	ORRNE	r1,r1,#if_filled
 	BNE	%FT90
 
+      [ true
+        ; EOR inversion is only used for icons that are non-sprite, unfilled and unshaded.
+        ; All other icons need to be filled so that the whole icon is visibly changed when selected
+        ; and then the unselected version special-cased in iconfilledCheckMenu.
+        ; Since we never select shaded icons in menus, the appropriate test here is just for if_sprite.
+        ; This allows the !Draw line pattern menu to work.
+        TST     r1,#if_sprite
+      | ; 4.02 code
 	TST	r1,#if_text
 	TSTNE	r1,#if_sprite		; if text+sprite icon
+      ]
 	ORRNE	r1,r1,#if_filled	; then fill it so inverting works
 	BICEQ	r1,r1,#if_bcol
 	BICEQ	r1,r1,#if_filled	; else clear the background and unfill it

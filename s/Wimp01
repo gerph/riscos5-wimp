@@ -2790,23 +2790,61 @@ greys_16
 ; tries "<filename>23" if hi-res mono, and/or "<filename>22" if 2x2 OS units
 
 IconSprites_Code
-        Push    "R12,LR"
+      [ Sprites11
+        Push    "R7-R8,LR"
         LDR     wsptr,[R12]
 ;
-      [ Sprites11
-        MOV     R3,R0                   ; R3 -> original filename
-        LDRB    R5,romspr_suffix
+        MOV     R8,R0                   ; R8 -> original filename
+        MOV     R5,R0                   ; R5 = position at which to insert system variable
+01      LDRB    LR,[R0],#1              ; skip leading space
+        TEQ     LR,#' '
+        BEQ     %BT01
+02      TEQ     LR,#'.'                 ; remember last '.' or ':'
+        TEQNE   LR,#':'
+        MOVEQ   R5,R0
+        CMP     LR,#' '
+        LDRHIB  LR,[R0],#1
+        BHI     %BT02
+        SUB     R7,R0,R8                ; length of original string incl terminator
+        ADD     R7,R7,#IconThemeSysVarLen + 3
+        BIC     R7,R7,#3                ; R7 = length to allocate for string with inserted system variable
+        SUB     SP,SP,R7
+
+        MOV     R0,R8
+        MOV     R3,SP
+03      LDRB    LR,[R0]                 ; skip leading spaces
+        TEQ     LR,#' '
+        ADDEQ   R0,R0,#1
+        BEQ     %BT03
+04      TEQ     R0,R5                   ; if at appropriate position
+        BNE     %FT06
+        ADR     R2,IconThemeSysVar
+        MOV     R4,#IconThemeSysVarLen
+05      LDRB    LR,[R2],#1              ; then insert system variable
+        STRB    LR,[R3],#1
+        SUBS    R4,R4,#1
+        BNE     %BT05
+06      LDRB    LR,[R0],#1              ; copy rest of string as is, including terminator
+        STRB    LR,[R3],#1
+        CMP     LR,#' '
+        BHI     %BT04
+
+        MOV     R3,SP                   ; R3 -> pathname with system variable inserted
+01      LDRB    R5,romspr_suffix
         LDRB    R6,romspr_suffix+1
         SUB     R5,R5,#'0'
         SUB     R6,R6,#'0'
         SUB     sp,sp,#4
-01      ADD     R14,R5,R6,LSL #8
+02      ADD     R14,R5,R6,LSL #8
         ADD     R14,R14,#'0'
         ADD     R14,R14,#'0':SHL:8
         STR     R14,[sp]
         MOV     R0,sp
         MOV     R1,R3
       |
+        Push    "LR"
+        LDR     wsptr,[R12]
+;
         MOV     R1,R0
         MOV     R3,R0                   ; R3 -> original filename
       ]
@@ -2816,32 +2854,40 @@ IconSprites_Code
         MOV     R0,#SpriteReason_MergeSpriteFile
         SWI     XWimp_SpriteOp
       [ Sprites11
-        BVC     %FT04
+        BVC     %FT03
 
         TEQ     R6,#3
         MOVEQ   R6,#2
-        BEQ     %BT01                   ; after Sprites23, try Sprites22
+        BEQ     %BT02                   ; after Sprites23, try Sprites22
 
         CMP     R5,R6
         MOVLO   R5,R5,LSL#1
         MOVHI   R6,R6,LSL#1
-        BNE     %BT01                   ; after rectangular pixels, try next squarer version
+        BNE     %BT02                   ; after rectangular pixels, try next squarer version
 
         TEQ     R5,#1
         MOVEQ   R5,#2
         MOVEQ   R6,#2
-        BEQ     %BT01                   ; after Sprites11, try Sprites22
+        BEQ     %BT02                   ; after Sprites11, try Sprites22
 
         MOV     R2,R3                   ; R2 -> original filename
         MOV     R0,#SpriteReason_MergeSpriteFile
         SWI     XWimp_SpriteOp
-04      ADD     sp,sp,#4
+03      ADD     sp,sp,#4
+
+        TEQ     R3,R8                   ; were we trying with the system variable inserted?
+        ADDNE   SP,SP,R7                ; yes, so junk stack frame
+        BVC     %FT04
+        BEQ     %FT05                   ; no, and an error, so give up
+        MOV     R3,R8                   ; yes, and an error, so try again without the system variable
+        B       %BT01
+04
       |
         MOVVS   R2,R3                   ; R2 -> original filename
         MOVVS   R0,#SpriteReason_MergeSpriteFile
         SWIVS   XWimp_SpriteOp
-      ]
         BVS     %FT05
+      ]
 
  [ windowsprite
   [ ThreeDPatch
@@ -2868,15 +2914,17 @@ IconSprites_Code
         CLRV                            ; ignore errors
         ]
 
-      [ Medusa
-        Pull    "R12,PC"                ; Medusa uses DA
-      |
+      [ :LNOT: Medusa                   ; Medusa uses DA
 ; this merge bumps the RMA up, compress it again just in case.
         MOV     R0,#1
         MOV     R1,#-&10000000           ; try and shrink RMA
         SWI     XOS_ChangeDynamicArea
         CLRV                            ; may cause an error, but ok.
-        Pull    "R12,PC"
+      ]
+      [ Sprites11
+        Pull    "R7-R8,PC"
+      |
+        Pull    "PC"
       ]
 05
         Push    "R0"
@@ -2886,7 +2934,17 @@ IconSprites_Code
         TEQ     R0,R14                   ; not really an error!
         CLRV    EQ
         ]
-        Pull    "R0,R12,PC"
+      [ Sprites11
+        Pull    "R0,R7-R8,PC"
+      |
+        Pull    "R0,PC"
+      ]
+
+ [ Sprites11
+IconThemeSysVar = "<Wimp$IconTheme>"
+IconThemeSysVarLen * . - IconThemeSysVar
+        ALIGN
+ ]
 
 ;............................................................................
 

@@ -3173,8 +3173,12 @@ iconfilledCheckMenu
 	TEQ	r0,#&C0000		; the main menu item has ESG 12
 	BNE	solidrectangle
 
+      [ true ; see argument in createsubmenu
+        TST     r1,#if_sprite
+      | ; 4.02 code
 	TST	r1,#if_text
 	TSTNE	r1,#if_sprite		; if it's not a text+sprite icon
+      ]
 	BEQ	solidrectangle
 01
 	Push	"cx0-cy1,handle,lr"

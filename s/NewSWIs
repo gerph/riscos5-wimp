@@ -318,6 +318,10 @@ SWIWimp_Extend
         TEQ     R0,#12
         BEQ     %FT12
       ]
+      [ Sprites11
+        TEQ     R0,#13
+        BEQ     %FT13
+      ]
         B       ExitWimp
 
       [ ChildWindows
@@ -383,6 +387,80 @@ SWIWimp_Extend
         ADRL    R14, ptrsuspendflag
         STR     R0, [R14]
         B       ExitWimp
+      ]
+
+      [ Sprites11
+13      ; Work out for the client what resolution suffix to append to a sprites file
+        ; First available in Wimp 4.85
+        ; Older Wimps don't return error, but can be detected because all registers are preserved
+        ; On entry:
+        ;   r0 = 13 (reason code)
+        ;   r1 -> pathname of file without suffix
+        ;   r2 -> buffer for result
+        ;   r3 = size of buffer (0 to read size required)
+        ; On exit:
+        ;   r0 corrupted
+        ;   r3 = space left in buffer (ie negative of size required if r3=0 on entry)
+        ;   other registers preserved
+        ;   contents of buffer are only valid if r3>=0
+        ;   error "File not found" may be returned
+        MOV     R0, R1
+loop1   LDRB    LR, [R0], #1
+        CMP     LR, #32
+        BCS     loop1
+        SUB     R0, R0, R1      ; length of original string (incl terminator)
+        ADD     R0, R0, #2      ; for the moment, we know the resultant string will be at most 2 bytes longer
+
+        SUBS    R3, R3, R0
+        STR     R3, [SP, #2*4]  ; put result in stack frame
+        BMI     ExitWimp        ; exit now if buffer not big enough
+
+loop2   LDRB    LR, [R1], #1
+        CMP     LR, #32
+        STRCSB  LR, [R2], #1    ; copy string into buffer
+        BCS     loop2
+        MOV     LR, #0
+        STRB    LR, [R2, #2]    ; insert terminator after two more characters
+
+        LDRB    R5, romspr_suffix
+        LDRB    R6, romspr_suffix+1
+        SUB     R5, R5, #'0'
+        SUB     R6, R6, #'0'
+loop3   ADD     LR, R5, #'0'
+        STRB    LR, [R2]
+        ADD     LR, R6, #'0'
+        STRB    LR, [R2, #1]
+        MOV     R0, #&4C        ; try opening a file on File$Path (matches *SLoad etc)
+        LDR     R1, [SP, #1*4]  ; retrieve pointer to start of buffer
+        SWI     XOS_Find
+        MOVVC   R1, R0
+        MOVVC   R0, #0
+        SWIVC   XOS_Find
+        BVC     ExitWimp        ; buffer contains a valid file, so exit
+
+        TEQ     R6, #3
+        MOVEQ   R6, #2
+        BEQ     loop3           ; after Sprites23, try Sprites22
+
+        CMP     R5, R6
+        MOVLO   R5, R5, LSL #1
+        MOVHI   R6, R6, LSL #1
+        BNE     loop3           ; after rectangular pixels, try next squarer version
+
+        TEQ     R5, #1
+        MOVEQ   R5, #2
+        MOVEQ   R6, #2
+        BEQ     loop3           ; after Sprites11, try Sprites22
+
+        MOV     LR, #0
+        STRB    LR, [R2]
+        MOV     R0, #&4C
+        LDR     R1, [SP, #1*4]
+        SWI     XOS_Find        ; finally, try with no suffix
+        MOVVC   R1, R0
+        MOVVC   R0, #0
+        SWIVC   XOS_Find
+        B       ExitWimp        ; return any error we got from this last one
       ]
 
 extendjumptable
