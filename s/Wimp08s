@@ -819,7 +819,7 @@ testapplication ROUT
 ;
   Debug mjs3,"testapplication routine issueing Service_Memory"
         MOV     R1,#Service_Memory
-      [ true
+      [ false
         MOV     R0,#IsAnybodyThere      ; 64 megabytes should be enough!
       |
         ; Oh no it isn't!
