@@ -4147,8 +4147,8 @@ update_pointer_shape_for_icon_create
         CMP     R14,#";"
         MOVEQ   R14,#0
         CMP     R14,#" "
-        STRHIB  r14,[r2],#1
-        BHI     %BT01
+        STRGTB  r14,[r2],#1
+        BGT     %BT01
 
         MOV     R4,#0                   ; Default active point is 0,0
         MOV     R5,#0

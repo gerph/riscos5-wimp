@@ -1407,8 +1407,8 @@ ptr_iconbar_icon
         CMP     R14,#";"
         MOVEQ   R14,#0
         CMP     R14,#" "
-        STRHIB  r14,[r2],#1
-        BHI     %BT88
+        STRGTB  r14,[r2],#1
+        BGT     %BT88
 
         MOV     R4,#0                   ; Default active point is 0,0
         MOV     R5,#0
@@ -3421,16 +3421,55 @@ makesmall
 
 wicon_back
         BL      int_get_window_state
-      [ RO4
+      [ true
+        MOV     R0, #121
+        MOV     R1, #&80
+        SWI     XOS_Byte                ; Scan keyboard for Shift key
+        TEQ     R1, #&FF
+      ]
+      [ true :LOR: RO4
         LDR     R14,pending_buttons
         AND     R14,R14,#button_right
+        BEQ     %FT12                   ; Branch if so
         ASSERT  button_right = (nullptr - nullptr2)
-        ADD     R14,R14,#nullptr2
+11      ADD     R14,R14,#nullptr2
       |
         MOV     R14,#nullptr2                   ; will not match
       ]
         STR     R14,[userblk,#u_bhandle]        ; so will go to bottom
         B       Exit_OpenWindow
+
+      [ true
+12      LDR     R0,[userblk,#u_handle]
+        Abs     R0,R0
+        ADD     R0,R0,#w_active_link
+        MOV     R2,#wf_isapane
+        ORR     R2,R2,#wf_grabkeys
+        TEQ     R14,#button_right
+        MOVEQ   R3,#ll_backwards
+        MOVNE   R3,#ll_forwards
+        BNE     %FT14                   ; need to search 1 window down, or 2 windows up
+13      LDR     R0,[R0,R3]
+        LDR     R1,[R0,R3]
+        CMP     R1,#nullptr             ; hit the stops?
+        BEQ     %BT11                   ; yes, so behave as though shift wasn't pressed
+        LDR     R1,[R0,#w_flags - w_active_link]
+        TST     R1,R2
+        BNE     %BT13                   ; skip over any panes or hotkey windows
+14      LDR     R0,[R0,R3]
+        LDR     R1,[R0,R3]
+        CMP     R1,#nullptr             ; hit the stops?
+        BEQ     %BT11                   ; yes, so behave as though shift wasn't pressed
+        LDR     R1,[R0,#w_flags - w_active_link]
+        TST     R1,#wf_backwindow       ; hit a backwindow (presumably going down)?
+        BNE     %BT11                   ; don't open behind it!
+        TST     R1,R2
+        BNE     %BT14                   ; skip over any panes or hotkey windows
+        SUB     R0,R0,#w_active_link
+        Rel     R0,R0
+        STR     R0,[userblk,#u_bhandle]
+        B       Exit_OpenWindow
+      ]
 
       [ IconiseButton
 wicon_iconise
