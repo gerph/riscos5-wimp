@@ -230,6 +230,10 @@ watchdognext
         SWI     XOS_ReadDefaultHandler
         SWIVC   XOS_ChangeEnvironment
 ;
+        MOV     R0,#UpCallHandler
+        SWI     XOS_ReadDefaultHandler
+        SWIVC   XOS_ChangeEnvironment
+;
         BL      deallocatependingtask   ; delete task block (gone for good)
                                         ; reclaim memory as well!
         MOV     R0,#0                   ; 'Press SPACE' if anything printed

@@ -840,7 +840,7 @@ resetkeycodes
         STRB    R1,[R3],#1
         ADD     R0,R0,#1
         CMP     R0,#228
-        BLO     %BT01
+        BLS     %BT01
 ;
         MOV     R0,#9
         MOV     R1,#0

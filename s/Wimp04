@@ -4198,7 +4198,7 @@ yesdr1
         LDR     R14,dragtype            ; Dragbox moving
         CMP     R14,#drag_scrollboth
         CMPNE   R14,#drag_subr_posn-1
-        BHI     %FT01
+        BLS     %FT01
         LDR     R14,dragsubr_move       ; does it have a move routine?
         CMP     R14,R14,ASR #31
         BEQ     %FT01

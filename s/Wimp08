@@ -116,8 +116,8 @@ SWIWimp_SlotSize  ROUT
         ADD     R2,R2,R0                ; R2 = (R2+size-1) DIV size * size
         SUB     R2,R2,#1
         DivRem  R3,R2,R0, R14
-01
         STR     R3,slotsize             ; [slotsize] = no of pages
+01
         LDR     R2,orig_applicationspacesize
         LDR     R14,freepoolbase
         SUB     R2,R2,R14               ; R2 = total free memory
@@ -1778,6 +1778,7 @@ mapslotout      ROUT
 01
         TEQ     R0,#EscapeHandler       ; we must replace these now,
         TEQNE   R0,#EventHandler        ; since they are dangerous!
+        TEQNE   R0,#UpCallHandler
         MOVNE   R1,#0
         MOVNE   R2,#0
         MOVNE   R3,#0

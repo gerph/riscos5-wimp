@@ -80,8 +80,8 @@ SWIWimp_SlotSize  ROUT
         ADD     R2,R2,R0                ; R2 = (R2+size-1) DIV size * size
         SUB     R2,R2,#1
         DivRem  R3,R2,R0, R14
-01
         STR     R3,slotsize             ; [slotsize] = no of pages
+01
         Push    "R0-R1"
     [ ShrinkableAreas
         MOV     R0, #5
@@ -143,6 +143,7 @@ SWIWimp_SlotSize  ROUT
         CMP     R1,R3,LSL #12           ;did no. of pages change?
         BEQ     returnmemsize
         MOV     R5,R1                   ;for message
+        ADR     lr, returnmemsize
         B       sendmemmessage
 
 ; SafeChangeDynamic
@@ -153,7 +154,7 @@ SWIWimp_SlotSize  ROUT
 SafeChangeDynamic
         Push    "lr"
         MOV     R0,#15
-        MOV     R1,#&08000000
+        ADR     R1,SafeChangeDynamic
         SWI     XOS_ChangeEnvironment
         BVS     %FT03                   ; can't change cao, try and shift memory anyway.
         MOV     R2,R1
@@ -177,6 +178,8 @@ SafeChangeDynamic
 ; NB this can only be done if the task is alive (otherwise it has no handle)
 ;
 sendmemmessage
+        Push    "lr"
+        STR     R1,appspacesize
         LDR     R14,taskhandle
         LDR     R14,[wsptr,R14]
         TST     R14,#task_unused
@@ -187,13 +190,14 @@ sendmemmessage
         MOVEQ   R0,#28                  ; 28 byte block
         MOVEQ   R3,#0                   ; your ref
         LDREQ   R4,=Message_SlotSize
-        LDREQ   R6,[sp,#0*4]            ; next slot size (already on stack)
+        LDREQ   R6,[sp,#1*4]            ; next slot size (already on stack)
         Push    "R0-R6"
         MOVEQ   R0,#User_Message        ; don't bother getting reply
         MOVEQ   R1,sp
         MOVEQ   R2,#0                   ; broadcast
         BLEQ    int_sendmessage         ; fills in sender, myref
         ADD     sp,sp,#28
+        Pull    "pc"
 
 returnmemsize
     Debug mjs2,"returnmemsize R1",R1
@@ -214,6 +218,25 @@ getnullslot
    Debug mjs2,"getnullslot, slot handle =",R2
    STRVS R0,[SP]
    Pull  "R0-R1,PC"
+
+servicememorymoved
+  ; If OS_ChangeDynamicArea claims some or all of the application slot (ie if Service_Memory
+  ; isn't claimed or UpCall_MovingMemory was claimed) then we need to issue Message_SlotSize
+  ; to keep the Switcher up-to-date.
+        Push    "R0-R6,LR"
+        MOV     R0,#ApplicationSpaceSize
+        MOV     R1,#0
+        SWI     XOS_ChangeEnvironment
+        LDR     R0,appspacesize
+        TEQ     R1,R0
+        Pull    "R0-R6,PC", EQ
+        LDR     R0,slotsize
+        MOV     R5,R1
+        MOV     R0,R0,LSL #12
+        Push    "R0"
+        BL      sendmemmessage
+        ADD     SP,SP,#4
+        Pull    "R0-R6,PC"
 
 ;
 ; Claim free memory pages
@@ -668,13 +691,14 @@ findpages       ROUT
 ; under the Medusa kernel, try and shrink app space by as much as possible
 
         MOV     R0,#6                   ; free pool
-        MOV     R1,#&10000000           ; try and shrink app space
+        MOV     R1,#&3FFFFFFF           ; try and shrink app space
         SWI     XOS_ChangeDynamicArea
 ; this sets up memory limit/ app space size as well
         MOV     R0,#-1
         SWI     XOS_ReadDynamicArea
         ADDVC   R5,R0,R2
         STRVC   R5,orig_applicationspacesize
+        STRVC   R5,appspacesize
 
         CLRV
 
@@ -861,7 +885,7 @@ restorepages    ROUT
 ;
         BL      deletependingtask       ; not interested in this task
 
-        MOV     R4,#-&10000000            ; shrink freepool as much as we can
+        MOV     R4,#&C0000000           ; shrink freepool as much as we can
         BL      SafeChangeDynamic
         Pull    "R1-R7,PC"
 ;                                       ; just add to the pages present
@@ -1161,6 +1185,7 @@ mapslotout      ROUT
 01
         TEQ     R0,#EscapeHandler       ; we must replace these now,
         TEQNE   R0,#EventHandler        ; since they are dangerous!
+        TEQNE   R0,#UpCallHandler
         MOVNE   R1,#0
         MOVNE   R2,#0
         MOVNE   R3,#0
