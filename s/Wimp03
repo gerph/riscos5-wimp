@@ -4040,7 +4040,7 @@ newmouseposn
         BNE     %FT06
         TEQ     R0, R3
         TEQEQ   R1, R4
-        TEQEQ   R2, R5
+;        TEQEQ   R2, R5
         BEQ     %FT06                   ; no change
 
         ADRL    R14, ptrsuspendflag
