@@ -1781,16 +1781,18 @@ wf_iconbits     *       2_01111111000000000000000000000000
 wf_newformat    *       2_10000000000000000000000000000000
 
               [ TrueIcon3
-wf2_truecolour  *       2_00000001      ; use title validation string colours
-                                        ; (implies w_title+4 is always used as validation string pointer, unless
-                                        ; already in use as spriteareaCB ptr, or part of non-indirected string)
-wf2_reserved    *       2_00001100      ; these bits are (erroneously) set in ResEd's window-object prototype
-                                        ; so we can't use them
+wf2_truecolour          *       2_00000001      ; use title validation string colours
+                                                ; (implies w_title+4 is always used as validation string pointer, unless
+                                                ; already in use as spriteareaCB ptr, or part of non-indirected string)
               ]
+wf2_extscrollreq        *       2_00000010      ; used by RISC OS 4.32
+wf2_reserved            *       2_00001100      ; these bits are (erroneously) set in ResEd's window-object prototype
+                                                ; so we can't use them
 	      [ ThreeDPatch
 wf2_no3Dborder		*	2_00000100	; this window must never be given a 3D border
 wf2_force3Dborder	*	2_00001000	; this window must always be given a 3D border
               ]
+wf2_shadedhelp          *       2_00010000      ; return shaded icons in GetPointerInfo, so they can have interactive help
 
               [ ChildWindows
 

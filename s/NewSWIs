@@ -182,6 +182,7 @@ paint_systemfont
 
 
 textop_gettextwidth
+        ; RISC OS 4.32 uses flag bit 31 to indicate that bounding box not width is required
         Push    "lr"
 
         MOV     R9,#bignum

@@ -1730,7 +1730,10 @@ pollit
 02
         LDR     R5,mousebuttons
         BL      getmouseposn            ; R0,R1 = mouse coords, R2 = buttons
+        Push    "R5"
+        MOV     R5,#0                   ; don't match shaded icons (not that there are any)
         BL      int_get_pointer_info    ; R3,R4 = window/icon handle
+        Pull    "R5"
 	;Debug	upcall, "int_get_pointer_info: w, i, oldbuttons, newbuttons:", R3, R4, R5, R2
         LDR     R14,errorhandle
         TEQ     R3,R14                  ; must be error window!

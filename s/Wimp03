@@ -1311,6 +1311,7 @@ notdragging
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
       ; CLRV                            ; ignore errors if they reach here
+        MOV     R5,#0                   ; don't match shaded icons
         BL      int_get_pointer_info    ; R3,R4 = window/icon handle
 
         LDR     R14,dragtype            ; We've just changed icon, do we
@@ -4072,6 +4073,7 @@ SWIWimp_GetPointerInfo
         LDR     R0,mousexpos                    ; just read old values
         LDR     R1,mouseypos
         LDR     R2,mousebuttons
+        MOV     R5,#wf2_shadedhelp              ; match shaded icons if this bit is set in window flags 2 byte
         BL      int_get_pointer_info
 
         CMP     R4, #nullptr2
@@ -4203,6 +4205,7 @@ bodgetime
 ; int_get_pointer_info - called by Poll_Wimp
 ; look for a match with a window / user icon
 ; Entry :  R0,R1 = coords of mouse pointer
+;          R5 = bits in windowflags2 that can be set to indicate shaded icons should b included
 ; Exit :   R3 = window handle (relative)
 ;          R4 = button index (or -1 if none)
 ;          handle --> window definition (if any)
@@ -4292,6 +4295,7 @@ findwlp
         MOVGE   R3,#0                           ; click was in work area (scan all children)
         MOV     userblk,R3
         ADD     R4,handle,#w_children + lh_forwards - ll_forwards
+        LDR     R5,[SP,#(10+4)*4]               ; get back original R5
         BL      int_get_pointer_info_R4         ; scan child window stack for a hit
         CMP     R3,#nullptr
         ADDNE   SP,SP,#10*4
@@ -4312,6 +4316,7 @@ findwlp
         LDR     R4,[handle,#w_nicons]           ; R4 = no of icons
         LDR     R2,[handle,#w_icons]            ; R2 --> start of icons
         ADD     R2,R2,R4,ASL #i_shift           ; R3 --> end of list
+        LDR     R5,[SP,#4*4]                    ; R5 on entry
 ficlp
         SUBS    R4,R4,#1
         BMI     noficon                         ; no more left
@@ -4323,14 +4328,18 @@ ficlp
         TST     R14,#is_shaded                  ; only ignore shaded icons
         LDRNE   R14,[handle,#w_taskhandle]      ; if they're not in a menu
         CMPNE   R14,#nullptr                    ; -1 => menu
-        BNE     ficlp
-;
+        BEQ     %FT01
+        LDRB    R14,[handle,#w_flags2]
+        TST     R14,R5                          ; do we want to match shaded icons in windows?
+        BEQ     ficlp
+01
         ASSERT  (i_bbx0=0)                      ; check LDMIA is OK
-        Push    "R2,R3,R4"
+        ASSERT  cx1 = r4
+        Push    "cx1,cy1"
         LDMIA   R2,{cx1,cy1,x0,y0}
         CMP     R0,cx1                          ; see if pointer is inside
         CMPGE   R1,cy1
-        Pull    "R2,R3,R4"              ; strategic move!
+        Pull    "cx1,cy1"
         BLT     ficlp
         CMP     R0,x0
         CMPLT   R1,y0
