@@ -268,7 +268,7 @@ allocatespritememory
 10
         LDR     R1,wimpspritepoolarea
         BL      Dynamic_Module
-        Pull    "R1,R8,PC",VC,^
+        Pull    "R1,R8,PC",VC
 
         MyXError WimpNoSprites
         Pull    "R1,R8,PC"

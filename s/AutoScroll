@@ -176,8 +176,9 @@ int_autoscroll
 
         BL      update_autoscroll_state
 
+        CLRV
         TST     R0, #af_enable
-        EXITS   NE
+        EXIT    NE
 
         MOV     R0, #SpriteReason_SetPointerShape
         ADRL    R14, special_pointer    ; if turned off, get pointer to sprite
@@ -191,7 +192,8 @@ int_autoscroll
         MOV     R6, #0
         MOV     R7, #0
         SWI     XWimp_SpriteOp
-        EXITS
+        CLRV
+        EXIT
 
 update_autoscroll_state
 ; In: R0 = new autoscroll state, in bits 0-4
@@ -202,12 +204,13 @@ update_autoscroll_state
         BL      update_autoscroll_flags
         LDR     R0, autoscr_state
 
+        CLRV
         TEQ     R0, R1
-        EXITS   EQ                      ; no change
+        EXIT    EQ                      ; no change
 
         LDR     R14, autoscr_rout
         TEQ     R14, #0
-        EXITS   EQ                      ; no pointer update routine
+        EXIT    EQ                      ; no pointer update routine
 
         CLRV                            ; make sure clean on entry
         Push    "wsptr"
@@ -215,11 +218,10 @@ update_autoscroll_state
         Push    "R14"                   ; store new PC
         LDR     R14, autoscr_wsptr
         Push    "R14"                   ; store new wsptr
-        MOV     R14, PC                 ; gets PC+12
+        MOV     R14, PC                 ; gets PC+8
         Pull    "wsptr, PC"             ; BL [autoscr_rout]
-        NOP
         Pull    "wsptr"                 ; retrieve Wimp wsptr
-        EXITS
+        EXIT
 
 update_autoscroll_flags
 ; Updates status flag bits to reflect current state
@@ -232,7 +234,7 @@ update_autoscroll_flags
         STREQ   R0, autoscr_state
         STREQB  R0, autoscr_scrolling
         STREQB  R0, autoscr_pausing
-        EXITS   EQ
+        EXIT    EQ
 
         LDR     R14, =af_status_bits    ; all bits default to 0
         BIC     userblk, R0, R14        ; keep in userblk until end of routine
@@ -315,7 +317,7 @@ update_autoscroll_flags
         BICEQ   userblk, userblk, #af_status_vert
 
         STR     userblk, autoscr_state
-        EXITS
+        EXIT
 
 get_centre_zone
 ; In:  handle = autoscroll window handle
@@ -360,7 +362,7 @@ get_centre_zone
         MOVLT   y0, y1, LSR#1           ; find the middle of the overlap
         MOVLT   y1, y0
 
-        EXITS
+        EXIT
 
 autoscroll_pointer_routine_1
 ; handles pointer changes according to the default rules
@@ -383,7 +385,7 @@ autoscroll_pointer_routine_1
         MOVNE   R1, #1
 
         TEQ     R0, R1                  ; don't do anything if status constant
-        EXITS   EQ
+        EXIT    EQ
 
         TEQ     R0, #0                  ; is it being turned on or off?
         BEQ     %FT10
@@ -437,7 +439,8 @@ autoscroll_pointer_routine_1
         MOV     R0, #SpriteReason_SetPointerShape
         SWI     XWimp_SpriteOp
 
-        EXITS
+        CLRV
+        EXIT
 
 10      ; turn *off* autoscroll pointer
         LDRB    R3, autoscr_old_ptr_number
@@ -496,7 +499,8 @@ autoscroll_pointer_routine_1
         SWI     XOS_Word                ; restore original pointer colour 3
         ADD     sp, sp, #8
 
-        EXITS
+        CLRV
+        EXIT
 
 autoscroll_pointers
         DCB     "ptr_autoscrh", 0, 0, 0, 0
@@ -505,7 +509,7 @@ autoscroll_pointers
 
 poll_autoscroll
 ; Called during poll - update scroll flags, issue open/scroll rqs if necessary
-        Entry   "R0-cy1"
+        EntryS  "R0-cy1"
         LDR     R0, autoscr_state
         BL      update_autoscroll_state
 

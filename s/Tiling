@@ -366,7 +366,7 @@ tile_putsprite
         SWI     XOS_SpriteOp
         SWIVS   XOS_WriteI+16
 
-        Pull    "R1-R7,PC",,^
+        Pull    "R1-R7,PC"
 
 get_new_pixtable Entry  "R0-R6"
 
@@ -390,7 +390,7 @@ get_new_pixtable Entry  "R0-R6"
         STR     R7,tile_pixtable
         STR     R7,tile_temptab
 
-        EXITS
+        EXIT
 
 05
         ; if tile_temptab and tile_pixtable were different then we must have been
@@ -403,7 +403,7 @@ get_new_pixtable Entry  "R0-R6"
 
         LDR     R7,pixtable_at
         STR     R7,tile_temptab
-        EXITS
+        EXIT
 
         LTORG
 
