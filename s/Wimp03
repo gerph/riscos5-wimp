@@ -3417,13 +3417,19 @@ makesmall
 
         ADD     R14,userblk,#u_wax0
         STMIA   R14,{cx0,cy0,cx1,cy1,x0,y0,x1}
-        B       openwindow
+        B       Exit_OpenWindow
 
 wicon_back
         BL      int_get_window_state
+      [ RO4
+        LDR     R14,pending_buttons
+        AND     R14,R14,#button_right
+        ASSERT  button_right = (nullptr - nullptr2)
+        ADD     R14,R14,#nullptr2
+      |
         MOV     R14,#nullptr2                   ; will not match
+      ]
         STR     R14,[userblk,#u_bhandle]        ; so will go to bottom
-openwindow
         B       Exit_OpenWindow
 
       [ IconiseButton

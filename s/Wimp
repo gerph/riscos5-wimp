@@ -85,7 +85,11 @@ LoadWimpOptions SETS "GET Options.s.$Options"
         GET     s.Memory
         GET     s.Wimp02
         GET     s.Watchdog
+      [ ThreeDPatch
+        GET     s.Tiling3D
+      |
         GET     s.Tiling
+      ]
         GET     s.Wimp03
         GET     s.Wimp04
         GET     s.Wimp05

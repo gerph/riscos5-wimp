@@ -98,4 +98,7 @@
 	OptionD autoscr,   false               ; autoscrolling / drags within windows
 	OptionD poll2,     false               ; stages through Wimp_Poll
 
+	OptionD tiling,    false	       ; new tiling code
+	OptionD threedpatch, false	       ; 3DPatch code
+
 	END

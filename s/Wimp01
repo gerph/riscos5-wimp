@@ -347,6 +347,40 @@ lf      *       10
 FALSE   *       0
 TRUE    *       1
 
+ [ RO4
+;;-----------------------------------------------------------------------------
+;; 3D Patch definitions
+;;-----------------------------------------------------------------------------
+
+					^	0
+TileInfo_SpritePtr			#	4
+TileInfo_SpriteAreaPtr			#	4
+TileInfo_TranslationTablePtr		#	4
+TileInfo_ScaleFactors			#	4*4
+TileInfo_Width				#	4
+TileInfo_Height				#	4
+TileInfo				*	@
+
+ [ false
+					; default to everything on
+ThreeDFlags_Default			*	&FFFFFFFF :AND::NOT: (ThreeDFlags_NoFontBlending :OR: ThreeDFlags_FullIconClipping)
+ |
+                                        ; you have to be kidding - use sane defaults
+ThreeDFlags_Default                     *       ThreeDFlags_NoFontBlending
+ ]
+ThreeDFlags_Use3DBorders		*	1<<0	; set to indicate the user wants 3D borders if they are configured
+ThreeDFlags_UseAlternateMenuTexture	*	1<<1
+ThreeDFlags_Fully3DIconBar		*	1<<2
+ThreeDFlags_RemoveIconBackgrounds	*	1<<3
+ThreeDFlags_TexturedMenus		*	1<<4
+ThreeDFlags_NoIconBgInTransWindows	*	1<<5
+ThreeDFlags_NoFontBlending		*	1<<6
+ThreeDFlags_FullIconClipping		*	1<<7
+
+arrowIconWidth_No3D     *       24
+arrowIconWidth_3D       *       32
+ ]
+
 No_Reason                       *       0
 Redraw_Window_Request           *       1
 Open_Window_Request             *       2
@@ -721,6 +755,12 @@ old_escape      #       1
 
        ALIGNHASH 4
 
+ [ ThreeDPatch
+truemenuborderfacecolour        # 4
+truemenuborderoppcolour         # 4	; colours to use for menu borders
+truewindowborderfacecolour      # 4
+truewindowborderoppcolour	# 4	; colours to use for window borders
+ ]
  [ TrueIcon1
 truefgcolour    #       4               ; for 24-bit colour icons
 truebgcolour    #       4
@@ -730,7 +770,12 @@ truebgcolour2   #       4               ; background colour for selected R5/R6 i
 truewellcolour  #       4               ; well colour for R6 icons
 truefacecolour  #       4               ; 3D plinth colour facing light source
 trueoppcolour   #       4               ; 3D plinth colour opposite light source
+ [ TrueSelectionColours
+trueselfgcolour	#	4		; selected foreground colour
+trueselbgcolour	#	4		; selected background colour
+ |
                 #       4               ; reserved, in case 7 icon colours are specified!
+ ]
  ]
 redrawhandle    #       4
 iconhandle      #       4
@@ -801,9 +846,16 @@ work_back_colour #      1               ; background colour of current window
 errorbox_open   #       1
         ALIGNHASH 4
         [ windowsprite
+	 [ ThreeDPatch
+ThreeDFlags	#	4
+MenuIsColourMenu #	4
+arrowIconWidth  #       1
+        ALIGNHASH 4
+	 |
 tiling_sprite   #       4
 tile_pixtable   #       4
 tile_temptab    #       4
+	 ]
         ]
 
 oldclipx0       #       16              ; really x0,y0,x1,y1
@@ -967,6 +1019,19 @@ headpointer     #       4               ; for message passing
 sender          #       4
 myref           #       4
 
+maxmenus        *       8
+longjumpSP      #       4               ; for cutting out the middle-man
+whichmenu       #       4
+menus_temporary #       4               ; if set, Wimp_Poll kills the menus
+menuhandle      #       4
+menuiconwidth   #       4
+menuiconheight  #       4
+menuiconspacing #       4
+menuSP          #       4
+menuhandles     #       4*maxmenus      ; handle of relevant window
+menudata        #       4*maxmenus      ; ptrs to menu definitions (-1 if dial)
+menuselections  #       4*maxmenus      ; selection index in each menu
+
 crf_vdu5caret   *       &01000000
 crf_invisible   *       &02000000
 crf_usercolour  *       &04000000
@@ -982,19 +1047,6 @@ menucareticon   #       4
 oldcaretdata    #       24              ; preserves caret data over menus
 hotkeyptr       #       4               ; pointer into window stack
 menuscrolly     #       4
-
-maxmenus        *       8
-longjumpSP      #       4               ; for cutting out the middle-man
-whichmenu       #       4
-menus_temporary #       4               ; if set, Wimp_Poll kills the menus
-menuhandle      #       4
-menuiconwidth   #       4
-menuiconheight  #       4
-menuiconspacing #       4
-menuSP          #       4
-menuhandles     #       4*maxmenus      ; handle of relevant window
-menudata        #       4*maxmenus      ; ptrs to menu definitions (-1 if dial)
-menuselections  #       4*maxmenus      ; selection index in each menu
 
  [ UseAMBControl
 appspacesize    #       4               ; size of current application slot
@@ -1046,7 +1098,7 @@ autoscr_scrolling       #       1       ; used to determine next setting of flag
 autoscr_pausing         #       1       ; used to determine whether timer is dirty, also a "don't re-enter" flag
 
 autoscr_speed_factor    *       5       ; -log2 of number of pointer offsets to scroll per centisecond
-autoscr_update_delay    *      12       ; hardwired minimum interval between updates (cs)
+autoscr_update_delay    *       8       ; hardwired minimum interval between updates (cs)
                                         ; is necessary to ensure null events have a chance to be seen
         ALIGNHASH   4
 autoscr_END             #       0
@@ -1090,6 +1142,9 @@ truescoutcolour #       4               ; scroll bar outer colour
 truescincolour  #       4               ; scroll bar inner colour
 truetitlebg2    #       4               ; title background colour when highlighted for input focus
 titlecolour     #       4               ; independent of input focus status
+   [ TrueSelectionColours
+		#	4		; spare word because of selected icon bg
+   ]
  ]
 
  [ SwitchingToSprite
@@ -1165,7 +1220,7 @@ list_at         #       4               ; head of sprite cache list
 list_size       #       4               ; size of buffer claimed
 list_end        #       4               ; end of list used for chop
 
-        [ windowsprite
+        [ windowsprite :LAND: :LNOT: ThreeDPatch
 tile_sc_block   #       16
 tile_log2px     #       4
 tile_log2py     #       4
@@ -1458,6 +1513,11 @@ errortitend     #       0
 
  ALIGNHASH 4
 
+	[ ThreeDPatch
+tile_sprites	 #	TileInfo * 16
+menu_tile_sprite #	TileInfo
+temp_tile_sprite #	TileInfo
+	]
 
               [ Swapping
 swapping        #       4               ; Is there a swap path ? if so, the length of the path.
@@ -1715,6 +1775,10 @@ wf2_truecolour  *       2_00000001      ; use title validation string colours
                                         ; already in use as spriteareaCB ptr, or part of non-indirected string)
 wf2_reserved    *       2_00001100      ; these bits are (erroneously) set in ResEd's window-object prototype
                                         ; so we can't use them
+              ]
+	      [ ThreeDPatch
+wf2_no3Dborder		*	2_00000100	; this window must never be given a 3D border
+wf2_force3Dborder	*	2_00001000	; this window must always be given a 3D border
               ]
 
               [ ChildWindows
@@ -2055,6 +2119,34 @@ WimpClickSubmenuC_Help          DCB "*Configure WimpClickSubmenu sets whether cl
                                 DCB "submenu will cause the attached submenu to be opened.",cr
 WimpClickSubmenuC_Syntax        DCB "Syntax: *Configure WimpClickSubmenu On|Off",0
         ]
+	[ ThreeDPatch
+WimpVisualFlags_Help		DCB "Change the visual appearance of the desktop.",cr
+				DCB "-3DWindowBorders",cr
+				DCB "	Give all menus and dialog boxes a 3D border.",cr
+				DCB "-TexturedMenus",cr
+				DCB "	Give all menus a textured background.",cr
+				DCB "-UseAlternateMenuBg",cr
+				DCB "	Use a different background tile for menus.",cr
+				DCB "-RemoveIconBoxes",cr
+				DCB "	Remove the filled box from behind the text in text+sprite icons.",cr
+				DCB "-NoIconBoxesInTransWindows",cr
+				DCB "	Remove the filled box from icons on windows similar to the pinboard.",cr
+				DCB "-Fully3DIconbar",cr
+				DCB "	Make the iconbar have a full 3D border.",cr
+				DCB "-NoFontBlending",cr
+				DCB "   Don't use font blending in icons.
+				DCB "-All",cr
+				DCB "	Turn all flags on.",cr
+				DCB "-WindowBorderFaceColour <&RRGGBB>",cr
+				DCB "	Set the colour of the top left portion of the window border.",cr
+				DCB "-WindowBorderOppColour <&RRGGBB>",cr
+				DCB "   Set the colour of the bottom right portion of the window border.",cr
+				DCB "-MenuBorderFaceColour <&RRGGBB>",cr
+				DCB "	Set the colour of the top left portion of the menu border.",cr
+				DCB "-MenuBorderOppColour <&RRGGBB>",cr
+				DCB "	Set the colour of the bottom right portion of the menu border.",0
+WimpVisualFlags_Syntax		DCB "Syntax: *WimpVisualFlags <options>",0
+	]
                         ALIGN
 
        |
@@ -2164,6 +2256,10 @@ WimpButtonTypeC_Syntax          DCB "SWNMBT",0
 WimpClickSubmenuC_Help          DCB "HWNMCSM",0
 WimpClickSubmenuC_Syntax        DCB "SWNMCSM",0
         ]
+	[ ThreeDPatch
+WimpVisualFlags_Help		DCB "HWNMVF",0
+WimpVisualFlags_Syntax		DCB "SWNMVF",0
+	]
                         ALIGN
 
        ]
@@ -2221,6 +2317,9 @@ Helptable
         [ ClickSubmenus
         Command WimpClickSubmenu,1,1,Status_Keyword_Flag:OR:International_Help,WimpClickSubmenuC
         ]
+	[ ThreeDPatch
+	Command WimpVisualFlags,15,0,International_Help
+	]
         DCB     0
 
 ;............................................................................
@@ -2696,10 +2795,15 @@ IconSprites_Code
         SWIVS   XWimp_SpriteOp
         BVS     %FT05
 
-        [ windowsprite
+ [ windowsprite
+  [ ThreeDPatch
+	MOV	R0,#0
+	BL	reset_all_tiling_sprites
+  |
         MOV     R0,#-1
         STR     R0,tiling_sprite
-        ]
+  ]
+ ]
 
         [ false
         MOV     R14,#ms_data            ; message block size
@@ -3328,6 +3432,25 @@ gotwork
         STRB    R0, clicksubmenuenable
       ]
 ;
+      [ ThreeDPatch
+	; set up the 3dpatch configuration
+	MOV	R0,#ThreeDFlags_Default
+	STR	R0,ThreeDFlags
+	LDR	R0,=&FFFFFF00
+	STR	R0,truemenuborderfacecolour
+	STR	R0,truewindowborderfacecolour
+	LDR	R0,=&99999900
+	STR	r0,truemenuborderoppcolour
+	LDR	R0,=&77777700
+	STR	r0,truewindowborderoppcolour
+      [ true
+        MOV     R0,#arrowIconWidth_No3D
+      |
+        MOV     R0,#arrowIconWidth_3D
+      ]
+        STRB    R0,arrowIconWidth
+      ]
+;
         ADRL    R14,paltable            ; initialise palette
         ADR     R11,emergencypalette
         LDMIA   R11!,{R1-R10}
@@ -3406,10 +3529,23 @@ gotwork
         STRB    R0, tinted_tool
         ]
         [ windowsprite
+	 [ ThreeDPatch						; initialise all the tile sprite info blocks
+	MOV	R0,#0
+	ADRL	R2,tile_sprites
+	ADD	R3,R2,#TileInfo * 18
+
+00	STR	R0,[R2,#TileInfo_SpritePtr]			; set all sprite pointer to -1
+	STR	R0,[R2,#TileInfo_TranslationTablePtr]		; and all translation table pointers to 0
+	ADD	R2,R2,#TileInfo
+	CMP	R2,R3
+	BLT	%BT00
+
+         |
         MOV     R0,#-1
         STR     R0,tiling_sprite        ; no tile sprite
         MOV     R0,#0
         STR     R0,tile_pixtable
+         ]
         ]
 ;
         BL      freetoolarea            ; tidy the tool area
@@ -3895,10 +4031,15 @@ recalcmodevars
         ADRL    R0,inverselookup
         MOV     LR,#-1
         STR     LR,[R0]                 ; force recache
-        Pull    R0
         [ windowsprite
+	 [ ThreeDPatch
+	MOV	R0,#0
+	BL	reset_all_tiling_sprites
+	 |
         STR     lr,tiling_sprite        ; force re cache
+         ]
         ]
+        Pull    R0
 
         [ false
         ADRL    R14,greys_mode
@@ -3952,9 +4093,13 @@ invalidatecache
         MOV     R2,#-1                  ; and the PixTrans mode
         STR     R2,lastmode
 
+      [ ThreeDPatch
+; MB - must add invalidating of new tile pixel tables here
+      |
         LDR     R2,tile_temptab
         ORR     R2,R2,#1
         STR     R2,tile_temptab
+      ]
 
         [ false
         BL      freetoollist            ; Lose cached tool data
@@ -5959,6 +6104,26 @@ visibleouterportion
         ADD     R0,handle,#w_x0
         B       visibleportion
 
+ [ ThreeDPatch
+visibleinnerportion_3D
+        ADD     R0,handle,#w_wax0
+      [ ChildWindows
+        Push    "R1,LR"
+        BL      visibleportion_3D
+        MOV     R1,#0
+        BL      subtract_children       ; don't include children of this window
+        Pull    "R1,PC"
+      ]
+
+visibleportion_3D
+        LDMIA   R0,{x0,y0,x1,y1}        ; get relevant coordinates
+	ADD	x0,x0,#4
+	ADD	y0,y0,#4
+	SUB	x1,x1,#4
+	SUB	y1,y1,#4
+	B	visibleportion_x0y0x1y1
+ ]
+
 visibleinnerportion
         ADD     R0,handle,#w_wax0
       [ ChildWindows
@@ -6743,8 +6908,13 @@ WimpKillSprite_Code
         BL      wimp_SpriteOp
 
         [ windowsprite
+	 [ ThreeDPatch
+        MOVVC   R0,#0
+	BLVC	reset_all_tiling_sprites
+	 |
         MOVVC   R0,#-1
         STRVC   R0,tiling_sprite
+         ]
         ]
         BLVC    freelist                ; mark list invalid
 
@@ -6765,5 +6935,121 @@ WimpKillSprite_Code
 02
         ]
         Pull    "r12,PC"
+
+ [ ThreeDPatch
+
+	ROUT
+00
+	DCB	"3DWindowBorders=3DWB/S,TexturedMenus=TM/S,UseAlternateMenuBg=UAMB/S,RemoveIconBoxes=RIB/S,"
+	DCB	"NoIconBoxesInTransWindows=NIBITW/S,Fully3DIconBar=F3DIB/S,All=A/S,"
+	DCB	"WindowBorderFaceColour=WBFC/E,WindowBorderOppColour=WBOC/E,"
+	DCB	"MenuBorderFaceColour=MBFC/E,MenuBorderOppColour=MBOC/E,"
+	DCB	"NoFontBlending=NFB/S",0
+	ALIGN
+
+WimpVisualFlags_Code
+	Push	"r12,lr"
+	LDR	r12,[r12]
+
+	TEQ	r1,#0
+	MOVEQ   r1,#ThreeDFlags_NoFontBlending
+	STREQ	r1,ThreeDFlags		; if no options are supplied then turn everything off
+	MOVEQ   lr,#arrowIconWidth_No3D
+	STREQB  lr,arrowIconWidth
+	Pull	"r12,pc",EQ
+
+	SUB	sp,sp,#256
+	MOV	r1,r0
+	ADR	r0,%BT00
+	MOV	r2,sp
+	MOV	r3,#256
+	SWI	XOS_ReadArgs
+	ADDVS	sp,sp,#256
+	Pull	"r12,pc",VS
+
+	MOV	r2,#0
+	LDR	r1,[sp,#0]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_Use3DBorders
+	MOVEQ   lr,#arrowIconWidth_No3D
+	MOVNE   lr,#arrowIconWidth_3D
+	STRB    lr,arrowIconWidth
+	LDR	r1,[sp,#4]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_TexturedMenus
+	LDR	r1,[sp,#8]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_UseAlternateMenuTexture
+	LDR	r1,[sp,#12]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_RemoveIconBackgrounds
+	LDR	r1,[sp,#16]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_NoIconBgInTransWindows
+	LDR	r1,[sp,#20]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_Fully3DIconBar
+	LDR	r1,[sp,#44]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_NoFontBlending
+	LDR	r1,[sp,#48]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_FullIconClipping
+
+	LDR	r1,[sp,#28]		; window border face colour
+	BL	%FT02
+	LDRNE	r0,=&FFFFFF00
+	STR	r0,truewindowborderfacecolour
+
+	LDR	r1,[sp,#32]		; window border opposite colour
+	BL	%FT02
+	LDRNE	r0,=&77777700
+	STR	r0,truewindowborderoppcolour
+
+	LDR	r1,[sp,#36]		; menu border face colour
+	BL	%FT02
+	LDRNE	r0,=&FFFFFF00
+	STR	r0,truemenuborderfacecolour
+
+	LDR	r1,[sp,#40]		; menu border opposite colour
+	BL	%FT02
+	LDRNE	r0,=&99999900
+	STR	r0,truemenuborderoppcolour
+
+	LDR	r1,[sp,#24]		; all
+	TEQ	r1,#0
+	MOVNE	r2,#&FFFFFFFF :EOR: ThreeDFlags_NoFontBlending
+	MOVNE   lr,#arrowIconWidth_3D
+	STRNEB  lr,arrowIconWidth
+
+01	ADD	sp,sp,#256
+	STR	r2,ThreeDFlags
+
+	Pull	"r12,pc"
+
+02	; subroutine
+	; r1 = ptr to int returned from OS_ReadArgs
+	; returns, r0 = the
+	; EQ if it is valid
+	Push	"lr"
+	TEQ	r1,#0
+	BNE	%FT03
+	TEQ	pc,#0
+	Pull	"pc"
+
+03	LDRB	r0,[r1],#1
+	TEQ	r0,#0
+	Pull	"pc",NE
+
+	LDRB	lr,[r1,#2]
+	MOV	r0,lr,LSL #8
+	LDRB	lr,[r1,#1]
+	ORR	r0,r0,lr,LSL #16
+	LDRB	lr,[r1,#0]
+	ORR	r0,r0,lr,LSL #24
+
+	TEQ	r0,r0
+	Pull	"pc"
+ ]
 
         END

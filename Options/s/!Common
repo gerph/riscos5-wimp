@@ -72,5 +72,15 @@
         Option  SwitchingToSprite,      true            ; update vdu variables when switching to sprite
         Option  StartTaskPostFilter,    true            ; always call the post filter on exit from Wimp_StartTask
 
+        Option  BlendedFonts,           BlendedFonts :LOR: (true :LAND: RO4) ; Blend fonts directly with window backgrounds
+        Option  ThreeDPatch,            true :LAND: RO4         ; implement 3DPatch (now most of the new features)
+        Option  No3DChildWindows,       true :LAND: RO4         ; child windows do not have 3D borders
+        Option  OldStyleColourMenus,    true :LAND: RO4         ; should the left and right parts of the colour menus be filled
+        Option  MinimumMenuHeight,      false :LAND: RO4        ; make all menu items at least 44 high
+        Option  TrueSelectionColours,   true :LAND: RO4         ; allow specification of alternate selection colours
+        Option  DotsAsWordSeparators,   true :LAND: RO4         ; when moving the caret on writable icons treat '.' the same as space
+        Option  FullIconClipping,       false :LAND: RO4        ; always clip the whole of icons to their bounding boxes rather than
+                                                                ; letting sprites overlap
+
         END
 

@@ -41,7 +41,7 @@
         Option  ShrinkableAreas,        false:LAND:Medusa       ; Support shrinkable dynamic areas
         Option  BlendedFonts,           false                   ; Blend fonts directly with window backgrounds
         Option  KeyboardMenus,          false                   ; Allow keyboard control of menus
-        Option  DeleteRight,            false                   ; Delete key deletes right
+        Option  DeleteRight,            true                    ; Delete key deletes right
         Option  DisableShiftF12,        false                   ; Disable Shift-F12 iconbar toggling
         Option  NCMenus,                false                   ; Use NC menu style
         Option  Twitter,                false                   ; Anti-twitter on redraws
@@ -81,6 +81,8 @@
         Option  CnP,                    true                    ; support for RISC OS selection model and Cut-and-Paste in writeable icons
         Option  NoFontBodge,            false                   ; don't use outline fonts
         Option  ClickSubmenus,          true                    ; submenus opened by clicking on their parent items (configurable)
+
+        Option  RO4,                    false                   ; RISC OS 4 extensions
 
         Option  RegisterMessages,       false
         Option  RegisterTools2D,        false

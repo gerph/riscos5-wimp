@@ -37,6 +37,8 @@ module_postfix	SETS	" RISC OS 3.5"
         Option  MultiClose,             true                    ; Allow Ctrl-Alt clicks on close/iconise buttons
         Option  PushBothBars,           true                    ; Push in both scrollbars on adjust-drags
 
+        Option  RO4,                    true                    ; RISC OS 4 extensions
+
 	ASSERT	International_Help = 0
 
         END

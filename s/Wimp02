@@ -80,7 +80,7 @@ markinitialised
         Debug   task1,"task_priority =",R14
         BLO     %FT01                   ; ignore the messages if not a valid task
 
-        CMP     R3,R3,ASR #31           ; is the handle valid?
+        CMP     R3,R3,ASR #31           ; is the handle valid? (-1 pointer still means all messages, for compatibility)
         STREQ   R3,[R2,#task_messages]
         BLNE    addmessages             ; add messages as required
 01
@@ -1215,8 +1215,13 @@ $lab    SetConfig $string, $unit, $cmosbyte, $cmosbit, $cmossize, $shift, $eor, 
         STREQ   R0, baseoflosprites
         STRNE   R0, baseofhisprites
         [ windowsprite
+	 [ ThreeDPatch
+        MOV     R0, #0
+	BL	reset_all_tiling_sprites
+	 |
         MOV     R0, #-1
         STR     R0, tiling_sprite
+         ]
         ]
         BL      freelist ; mark cached sprite list invalid
         ]
@@ -1469,7 +1474,7 @@ configmess_scrolldelay          DCB     "WimpAutoScrollDelay  <D>",lf,cr,0
 WimpClickSubmenuC_Code
     ConfigOption clicksubmenu,,Misc1CMOS,0,1,,0,,,clicksubmenuenable,,B,status_offon
 statusmess_clicksubmenu         DCB     "WimpClickSubmenu  ",0
-configmess_clicksubmenu         DCB     "WimpClickSubmenu  On|Off",cr,lr,0
+configmess_clicksubmenu         DCB     "WimpClickSubmenu  On|Off",lf,cr,0
         ALIGN
         ]
 
@@ -4060,6 +4065,11 @@ copyicon
         Pull    "R1-R9"
 ;
         MOV     R0,R3                           ; R0 = icon handle (0..n-1)
+ [ RO4
+; MB added call here to force update of pointer shape if an icon is created under the pointer
+	bl	update_pointer_shape_for_icon_create
+; end MB
+ ]
         Pull    "PC"
 
 addicon
@@ -4082,6 +4092,96 @@ addicon
         ADD     R14,R3,#1                       ; update no. of icons
         STR     R14,[handle,#w_nicons]
         B       copyicon
+
+ [ RO4
+; MB new routine to check if the new icon is being created under the pointer and set up the pointe shape if needed
+update_pointer_shape_for_icon_create
+	ROUT
+	Push	"r5,x0-y1,lr"
+	LDR	x0,[handle,#w_scx]
+	LDR	y0,[handle,#w_scy]
+	LDR	x1,[handle,#w_wax0]
+	LDR	y1,[handle,#w_way1]
+	SUB	x0,x0,x1			; x0 = scroll x - min x
+	SUB	y0,y0,y1			; y0 = scroll y - max y
+	LDR	r5,mousexpos
+	LDR	lr,mouseypos
+	ADD	r5,r5,x0
+	ADD	lr,lr,y0
+	ADD	x0,userblk,#4
+	LDMIA	x0,{x0-y1}
+	CMP	r5,x0
+	CMPGT	lr,y0
+	Pull	"r5,x0-y1,pc",LT
+	CMP	r5,x1
+	CMPLT	r5,y1
+	Pull	"r5,x0-y1,pc",GT
+		; pointer is over the new icon
+	LDR	R5,mouseflags
+        TST     R5,#mf_wait2clicks              ; reset pointer shape if nec.
+        BLNE    doubleptr_off
+        BIC     R5,R5,#mf_pendingexceptdrag     ; cancel pending (except drag)
+        STR     R5,mouseflags
+
+        LDR     r5,[userblk,#i_flags + 4]
+        TST     r5,#if_text
+        TSTNE   r5,#if_indirected       ; Is it indirected text ?
+        Pull	"r5,x0-y1,pc",EQ
+
+	Push	"r0-r4"
+
+        MOV     r2,#WimpValidation_Pointer
+        LDR     r3,[userblk,#i_data+4 + 4]      ; Pointer to validation string.
+        CMP     r3,r2,ASR #31
+        Pull    "r0-r5,x0-y1,pc",EQ
+        BL      findcommand
+        Pull	"r0-r5,x0-y1,pc",NE
+
+        ADRL    r2,pointer_sprite
+01
+        LDRB    R14,[r3],#1
+        CMP     R14,#","
+        MOVEQ   R14,#-1
+        CMP     R14,#";"
+        MOVEQ   R14,#0
+        CMP     R14,#" "
+        STRHIB  r14,[r2],#1
+        BHI     %BT01
+
+        MOV     R4,#0                   ; Default active point is 0,0
+        MOV     R5,#0
+        STRB    R4,[r2]                 ; Terminate the sprite name.
+
+        CMP     R14,#-1
+        BNE     %FT02
+
+        BL      getnumber
+        MOV     R4,R0                   ; Returns 0 if not found.
+
+        LDRB    R14,[R3],#1
+        CMP     R14,#","
+        BNE     %FT02
+        BL      getnumber
+        MOV     R5,R0                   ; Returns 0 if not found.
+
+02
+        MOV     R0,#SpriteReason_SetPointerShape
+        ADRL    R2,pointer_sprite
+        MOV     R3,#1
+      [ Autoscr
+        LDR     R14, autoscr_state      ; don't reprogram pointer if autoscrolling is enabled
+        TST     R14, #af_enable
+        ORRNE   R3, R3, #&10
+      ]
+        MOV     R6,#0
+        MOV     R7,#0
+        SWI     XWimp_SpriteOp          ; take from Wimp's sprite area(s)
+        MOV     R14,#-1
+        ADRL    R1,special_pointer
+        STR     R14,[r1]
+
+        Pull	"r0-r5,x0-y1,pc"
+ ]
 
 ; Handy routine for the menu code in Wimp05 to avoid RMA hammering
 ; On entry: R3 = number of icons
@@ -6658,6 +6758,10 @@ int_flush_open  ROUT
         LDMIA   R14,{x0,y0,x1,y1}
         BL      visibleportion_x0y0x1y1         ; new visible list (WITHOUT subtracting invalid rectangles)
 
+ [ ThreeDPatch
+	BL	CheckRedraw3DBorders
+ ]
+
 ; clip old visible region to the new one, and stash the block-copy rectangles for later
 
         MOV     R0,#oldwindowrects
@@ -6714,6 +6818,128 @@ int_flush_open  ROUT
 
         Pull    "PC"
 
+ [ ThreeDPatch
+CheckRedraw3DBorders
+	ROUT
+	Push	"lr"
+
+ [ debugthreedpatch
+	Debug	threedpatch,"Entering CheckRedraw3DBorders"
+
+	ADD	cx0,handle,#w_wax0
+ 	LDMIA	cx0,{cx0-cy1}
+ 	Debug	threedpatch,"new work area :",cx0,cy0,cx1,cy1
+
+	ADD	cx0,handle,#w_old_wax0
+	LDMIA	cx0,{cx0-cy1}
+	Debug	threedpatch,"old work area :",cx0,cy0,cx1,cy1
+ ]
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_Use3DBorders
+	Pull	"pc",EQ
+
+	LDR	r14,[handle,#w_taskhandle]
+	CMP	r14,#-1
+	BEQ	%FT02
+
+	LDRB	r14,[handle,#w_wbcol]
+	TEQ	r14,#1
+	Pull	"pc",NE
+
+	LDRB	r14,[handle,#w_flags2]
+	AND	r14,r14,#wf2_no3Dborder :OR: wf2_force3Dborder
+	TEQ	r14,#wf2_no3Dborder
+	Pull	"pc",EQ
+	TEQ	r14,#wf2_force3Dborder
+	BEQ	%FT02
+
+	LDR	r14,[handle,#w_flags]
+	TST	r14,#&70000000
+	TSTEQ	r14,#&00000020
+ [ No3DChildWindows
+	LDREQ	r14,[handle,#w_parent]
+	CMPEQ	r14,#-1				; check if it's a top level window
+ ]
+	Pull	"pc",NE
+
+02	ADD	x0,handle,#w_old_wax0
+	LDMIA	x0,{x0-y1}
+	ADD	cx0,handle,#w_wax0
+	LDMIA	cx0,{cx0-cy1}
+
+	LDR	lr,xoffset
+	ADD	x0,x0,lr
+	ADD	x1,x1,lr
+	LDR	lr,yoffset
+	ADD	y0,y0,lr
+	ADD	y1,y1,lr
+
+	MOV	r0,#0				; number of rectangles to invalidate
+
+	CMP	x0,cx0
+		; if NE then mark new left border as invalid
+	MOVNE	r1,cx1
+	ADDNE	cx1,cx0,#4
+	Push	"cx0-cy1",NE
+	MOVNE	cx1,r1
+	ADDNE	r0,r0,#1
+		; if GT then mark old left border as invalid
+	MOVGT	r1,x1
+	ADDGT	x1,x0,#4
+	Push	"x0-y1",GT
+	MOVGT	x1,r1
+	ADDGT	r0,r0,#1
+
+	CMP	x1,cx1
+		; if NE then mark new right border as invalid
+	MOVNE	r1,cx0
+	SUBNE	cx0,cx1,#4
+	Push	"cx0-cy1",NE
+	MOVNE	cx0,r1
+	ADDNE	r0,r0,#1
+		; if LT then mark old right border as invalid
+	MOVLT	r1,x0
+	SUBLT	x0,x1,#4
+	Push	"x0-y1",LT
+	MOVLT	x0,r1
+	ADDLT	r0,r0,#1
+
+	CMP	y0,cy0
+		; if NE then mark new bottom border as invalid
+	MOVNE	r1,cy1
+	ADDNE	cy1,cy0,#4
+	Push	"cx0-cy1",NE
+	MOVNE	cy1,r1
+	ADDNE	r0,r0,#1
+		; if GT then mark old bottom border as invalid
+	MOVGT	r1,y1
+	ADDGT	y1,y0,#4
+	Push	"x0-y1",GT
+	MOVGT	y1,r1
+	ADDGT	r0,r0,#1
+
+	CMP	y1,cy1
+		; if NE then mark new top border as invalid
+	MOVNE	r1,cy0
+	SUBNE	cy0,cy1,#4
+	Push	"cx0-cy1",NE
+	MOVNE	cy0,r1
+	ADDNE	r0,r0,#1
+		; if LT then mark old top border as invalid
+	MOVLT	r1,y0
+	SUBLT	y0,y1,#4
+	Push	"x0-y1",LT
+	MOVLT	y0,r1
+	ADDLT	r0,r0,#1
+
+00	SUBS	R0,R0,#1
+	Pull	"pc",LT
+	Pull	"cx0-cy1"
+	Push	"r0"
+	BL	subwindowrect
+	Pull	"r0"
+	B	%BT00
+ ]
 ;..............................................................................
 
 ; In    handle -> window to consider
@@ -6927,7 +7153,11 @@ SWIWimp_BlockCopy
         STR     R6,yoffset
 
         pullx   "x0,y0,x1,y1"
+ [ ThreeDPatch
+        BLVC    int_visibleinner_ignore3Dboder_x0y0x1y1 ; [windowrects] = visible part
+ |
         BLVC    int_visibleinner_x0y0x1y1 ; [windowrects] = visible part
+ ]
 
         MOVVC   R0,#windowrects
         MOVVC   R1,#invalidrects
@@ -6950,6 +7180,45 @@ SWIWimp_BlockCopy
         BLVC    int_blockcopy           ; may re-validate some rectangles
 
         B       ExitWimp
+
+ [ ThreeDPatch
+CheckIfWindowRequires3DBorders
+	ROUT
+	Push	"lr"
+
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_Use3DBorders
+	BEQ	%FT10	; no border
+
+	TST	r14,#ThreeDFlags_TexturedMenus
+	BEQ	%FT01
+	LDR	r14,[handle,#w_taskhandle]
+	CMP	r14,#-1
+	Pull	"pc",EQ	; it's a menu so needs a border
+
+01	LDRB	r14,[handle,#w_wbcol]
+	TEQ	r14,#1
+	BNE	%FT10	; no border
+
+	LDRB	r14,[handle,#w_flags2]
+	AND	r14,r14,#wf2_no3Dborder :OR: wf2_force3Dborder
+	TEQ	r14,#wf2_no3Dborder
+	BEQ	%FT10	; no border
+	TEQ	r14,#wf2_force3Dborder
+	Pull	"pc",EQ	; force border on
+
+	LDR	r14,[handle,#w_flags]
+	TST	r14,#&70000000
+	TSTEQ	r14,#&00000020
+ [ No3DChildWindows
+	LDREQ	r14,[handle,#w_parent]
+	CMPEQ	r14,#-1				; check if it's a top level window
+ ]
+	Pull	"pc"		; if it's eq here then border needed, else not needed
+
+10	CMP	pc,#0
+	Pull	"pc"
+ ]
 
 ;
 ; Entry:  [windowrects] = visible rectangles of old block
@@ -8749,9 +9018,15 @@ getvscrollcoords
 	SUB	cy1,y1,R14
 	ADD	cy0,y0,R14		; first try to fill available well with slider
 	CMP	cy1,cy0
+      [ RO4 :LOR: true
+	ADDLT	cy1,y0,y1		; then, if negative, put in a zero-height slider in centre of well
+	MOVLT	cy1,cy1,LSR #1
+	MOVLT	cy0,cy1
+      |
 	ADDLO	cy1,y0,y1		; then, if negative, put in a zero-height slider in centre of well
 	MOVLO	cy1,cy1,LSR #1
 	MOVLO	cy0,cy1
+      ]
 	B	%FT02
 01
       ]
@@ -8880,9 +9155,15 @@ gethscrollcoords
 	SUB	cx1,x1,R14
 	ADD	cx0,x0,R14		; first try to fill available well with slider
 	CMP	cx1,cx0
+      [ RO4 :LOR: true
+	ADDLT	cx1,x0,x1		; then, if negative, put in a zero-height slider in centre of well
+	MOVLT	cx1,cx1,LSR #1
+	MOVLT	cx0,cx1
+      |
 	ADDLO	cx1,x0,x1		; then, if negative, put in a zero-height slider in centre of well
 	MOVLO	cx1,cx1,LSR #1
 	MOVLO	cx0,cx1
+      ]
 	B	%FT02
 01
       ]
@@ -9212,6 +9493,41 @@ int_update_window3
       ]
         Pull    "PC"
 
+ [ ThreeDPatch
+int_visibleinner_ignore3Dboder_x0y0x1y1
+        Push    "x0,y0,x1,y1,LR"
+;
+	BL	CheckIfWindowRequires3DBorders
+	BNE	%FT01
+        BL      visibleinnerportion_3D     ; this subtracts the child windows
+	B	%FT02
+01	BL      visibleinnerportion     ; this subtracts the child windows
+02      MOV     R0,#windowrects         ; only the VALID bits
+        MOV     R1,#invalidrects
+        BL      subrects
+;
+        ADD     R14,handle,#w_wax0
+        LDMIA   R14!,{x0,y0,x1,y1}
+        LDMIA   R14,{cx1,cy1}
+        SUB     cx1,x0,cx1              ; coords of top-left
+        SUB     cy1,y1,cy1
+        MOV     R0,cx1
+        MOV     R1,cy1
+        SWI     XOS_SetECFOrigin        ; for Wimp_UpdateWindow
+;
+        Pull    "x0,y0,x1,y1"
+        ADD     cx0,x0,cx1
+        ADD     cy0,y0,cy1
+        ADD     cx1,x1,cx1
+        ADD     cy1,y1,cy1
+;
+        MOV     R0,#windowrects
+        MOV     R1,R0
+        BL      intrect
+;
+        Pull    "PC"
+ ]
+
 int_visibleinner_x0y0x1y1
         Push    "x0,y0,x1,y1,LR"
 ;
@@ -9338,6 +9654,21 @@ int_get_rectangle
 	CallFilter posticonfilter
         BL      forcecaret              ; put caret back
         Pull    "PC",VS
+
+ [ ThreeDPatch :LOR: :LNOT: NCMenus
+	ADD	x0,handle,#w_wax0
+	LDMIA	x0,{x0-y1}
+ ]
+ [ ThreeDPatch
+	BL	PlotWindowBorders
+ ]
+ [ :LNOT: NCMenus
+	LDR	r14,[handle,#w_taskhandle]
+	CMP	r14,#-1
+        LDREQ   R14,[handle,#w_scy]
+        SUBEQ   y1,y1,R14               ; y1 = position of menu origin
+        BLEQ    redrawmenu              ; draw dotted lines if nec.
+ ]
  ]
 20
         LDR     R14,getrectflags
@@ -9462,10 +9793,12 @@ getrectend
         |
         SWI     XOS_WriteI+16
         ]
+ [ :LNOT: RO4
         LDR     R14,[handle,#w_scy]
         SUB     y1,y1,R14               ; y1 = position of menu origin
  [ :LNOT: NCMenus
         BL      redrawmenu              ; draw dotted lines if nec.
+ ]
  ]
 noclrwbg
         Pull    "x0,y0,x1,y1"           ; need these for returning to caller!

@@ -313,7 +313,7 @@ snap_coords
 ;;-----------------------------------------------------------------------------
 ;; adjust_bbox - adjust all four co-ordinates by the specified value.
 ;;
-;; in   R3 = adjustment factor in OS_Units
+;; in   R0 = adjustment factor in OS_Units
 ;;      x0-y1 => co-ordinates to massarge
 ;; out  x0-y1 => co-ordinates suitable tinkered with
 ;;-----------------------------------------------------------------------------

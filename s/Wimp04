@@ -342,6 +342,10 @@ int_seticonptrs ROUT
         STR     R14, truefacecolour
         STR     R14, trueoppcolour
       ]
+      [ TrueSelectionColours
+	STR	r14, trueselfgcolour
+	STR	r14, trueselbgcolour
+      ]
 
         TST     R1,#if_fancyfont
         ;If system font, use colours in flags
@@ -741,11 +745,37 @@ readval_truetitlebg2
         ADD     R4, R4, #4
         LDRB    R0, [R1, #1] !         ; skip preceding '/'
         TEQ     R0, #'/'               ; if a '/' here then no input focus supplied
+ [ TrueSelectionColours
+	BEQ	readval_trueselbg
+ |
         BEQ     %FT13
+ ]
         MOV     R0, #16
         SWI     XOS_ReadUnsigned       ; read the input focus colour
+ [ TrueSelectionColours
+	BVS	%FT13
+	MOV	r2,r2,LSL #8
+	STR	r2,[r4]
+ |
         MOVVC   R2, R2, LSL #8
         STRVC   R2, [R4]
+ ]
+
+ [ TrueSelectionColours
+
+        LDRB    R0, [R1]
+        TEQ     R0, #'/'               ; if not followed by a '/', then no other colours are supplied
+        BNE     %FT13
+readval_trueselbg
+        ADD     R4, R4, #4
+        LDRB    R0, [R1, #1] !         ; skip preceding '/'
+        TEQ     R0, #'/'
+	BEQ	%FT13
+        MOV     R0, #16
+        SWI     XOS_ReadUnsigned
+	MOVVC	r2,r2,LSL #8
+	STRVC	r2,[r4]
+ ]
       ]
 
 13
@@ -828,8 +858,17 @@ mungetruecolours ROUT
         TSTEQ   R1, #if_sprite :OR: if_filled
         BEQ     %FT03
         ; normal inversion
+ [ TrueSelectionColours
+        LDR     R3, trueselfgcolour
+	CMP	R3, #-1
+	LDREQ	R3, truebgcolour
+        LDR     R2, trueselbgcolour
+	CMP	R2, #-1
+	LDREQ	R2, truefgcolour
+ |
         LDR     R2, truefgcolour
         LDR     R3, truebgcolour
+ ]
         STR     R3, truefgcolour
         STR     R2, truebgcolour
         TST     R1, #if_sprite          ; deal with special cases
@@ -1011,8 +1050,8 @@ pageiniconbartask
         EntryS
 ;
         LDR     R14,redrawhandle
-        CMP     R14,#0
-        BLT     piibt_x1
+        CMP     R14,#nullptr
+        BEQ     piibt_x1
         LDR     R0,iconbarhandle
         TEQ     R0,R14
         BNE     piibt_x1
@@ -1606,12 +1645,34 @@ godrawicon TraceL font
 ;
         LDR     R14,writeabledir
         Push    "r14"
+
+ [ FullIconClipping
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_FullIconClipping
+	BEQ	%FT01
+        Push    "cx0-y1"
+        ADR     R14,clipx0
+        LDMIA   R14,{cx0,cy0,cx1,cy1}
+        ADR     R14,oldclipx0
+        STMIA   R14,{cx0,cy0,cx1,cy1}
+        max     x0,cx0                  ; NB must result in non-null window
+        max     y0,cy0                  ; since the rectangles intersect
+        min     x1,cx1
+        min     y1,cy1
+        BL      graphicswindow
+        Pull    "cx0-y1"
+01
+ ]
         TST     R1,#if_numeric
         MOVNE   R14,#0
         STRNE   R14,writeabledir
 ;
         TST     R1,#if_filled
+ [ ThreeDPatch
+	BLNE	iconfilledCheckMenu
+ |
         BLNE    iconfilled              ; this checks for if_fancyfont
+ ]
         TST     R1,#if_sprite
         BLNE    iconsprite              ; IS allowed if if_text set!!!
         BVC     %FT01
@@ -1624,6 +1685,13 @@ godrawicon TraceL font
         TST     R1,#if_border
         BLNE    iconborder
 enddr
+ [ FullIconClipping
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_FullIconClipping
+        ADRNE   R14,oldclipx0
+        LDMNEIA R14,{x0,y0,x1,y1}
+        BLNE    graphicswindow
+ ]
         Pull    "r14"
         STR     R14,writeabledir
         EXITS                           ; preserves flags (errors lost)
@@ -1662,9 +1730,23 @@ icontext TraceL font
 ;
 ; if icon is too big, ensure that it is clipped
 ;
+ [ RO4
+; MB FIX assume icon is always too big so that top and bottom are clipped properly.
+;        LDR     R14,spaceinicon
+;        CMP     R14,#6                  ; needs at least 3*dx space left
+;        BPL     %FT01
+; end MB FIX
+
+ [ FullIconClipping
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_FullIconClipping
+	BNE	%FT01
+ ]
+ |
         LDR     R14,spaceinicon
         CMP     R14,#6                  ; needs at least 3*dx space left
         BPL     %FT01
+ ]
 ;
         Push    "cx0-y1"
         ADR     R14,clipx0
@@ -1687,11 +1769,105 @@ icontext TraceL font
         TSTNE   R14,#if_sprite
         BEQ     %FT02
 
+ [ ThreeDPatch
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_NoIconBgInTransWindows
+	BEQ	%FT90			; if clearing the background for icons in transparent windows is disabled then skip this bit
+	LDR	r14,redrawhandle
+	CMP	r14,#nullptr
+	BEQ	%FT90
+	Abs	r14,r14
+	LDRB	r14,[R14,#w_wbcol]
+	TEQ	r14,#&FF		; if window background is transparent
+	TSTEQ	r1,#is_inverted		; and the icon is not inverted
+	BEQ	%FT02			; then don't plot the rectangle
+90
+ ]
         LDRB    R14,[R2]                ; is the text null?
         CMP     R14,#32
         BICCC   R1,R1,#if_filled        ; don't fill if null rectangle
         BCC     %FT02
 ;
+ [ ThreeDPatch
+	ORR	R1,R1,#if_filled        ; now we must fill the background!
+        Push    "r0,cx0-cy1"
+
+        LDR     R14,text_y0
+        ADD     cy1,cy1,R14
+        CMP     cx1,x0                  ; don't draw outside icon!
+        MOVLT   cx1,x0
+        CMP     cy1,y0
+        MOVLT   cy1,y0
+
+        LDR     R14,writeabledir
+        TEQ     R14,#0
+        SUBNE   R14,cx1,x0
+        SUBNE   cx1,x1,R14
+        CMP     cx1,x1                  ; don't draw outside icon!
+        MOVGT   cx1,x1
+
+	MOV	cx0,cx1
+	MOV	cy0,cy1
+
+        LDR     cy1,[sp,#4*4]
+        LDR     R14,temp_text_height
+        ADD     cy1,cy1,R14
+        LDR     R14,text_width
+
+        LDR     R0,writeabledir
+        TEQ     R0,#0
+        ADDEQ   cx1,cx1,R14
+        SUBNE   cx1,cx1,r14
+        CMP     cx1,x0                  ; don't draw outside icon!
+        MOVLT   cx1,x0
+
+        CMP     cx1,x1                  ; don't draw outside icon!
+        MOVGT   cx1,x1
+        CMP     cy1,y1
+        MOVGT   cy1,y1
+
+;        LDR     R14,dx                  ; make inclusive
+;        SUB     cx1,cx1,R14
+;        LDR     R14,dy
+;        SUB     cy1,cy1,R14
+
+	; cx0-cy1 now contain the rectangle to plot
+
+	Push	"handle"
+
+	TST	r1,#is_inverted
+	BNE	%FT92
+
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_RemoveIconBackgrounds
+
+	MOV	r0,r1,LSR #ib_bcol
+	LDR	handle,redrawhandle
+	Debug	threedpatch,"redraw handle = ",handle
+	CMP	handle,#nullptr
+	BEQ	%FT92
+	Abs	handle,handle
+93	LDRB	r14,[handle,#w_wbcol]
+	Debug	threedpatch,"Window bg colour = ",r14
+	Debug	threedpatch,"Icon bg colour = ",r0
+	TST	r1,#if_fancyfont
+	LDRNEB	r0,fontbackground
+	TEQ	r0,r14
+	BEQ	%FT90
+92
+	Push	"cx0-y1"		; cx0-cy1 and x0-y1
+	Pull	"x0-y1"
+	bl	solidrectangle
+	Pull	"x0-y1"
+	b	%FT91
+90
+	BIC	r1,r1,#if_filled	; the icon isn't actually filled now.
+	Debug	threedpatch,"Calling ploticonbackgroundsprite",cx0,cy0,cx1,cy1,handle
+	bl	ploticonbackgroundsprite
+91
+	Pull	"handle"
+        Pull    "r0,cx0-cy1"
+ | ; NOT ThreeDPatch
         ORR     R1,R1,#if_filled        ; now we must fill the background!
         Push    "cx1,cy1"
         LDR     R14,text_y0
@@ -1761,6 +1937,7 @@ icontext TraceL font
         BL      plotcxy1                ; PLOT R0,cx1,cy1 (upper-right)
 ;
         Pull    "cx1,cy1"
+ ]
 02
         LDR     LR,writeabledir
         CMP     LR,#0
@@ -1861,6 +2038,10 @@ icontext_dont_justify
 icontext_paint
  [ BlendedFonts
         TST     R0, #if_filled
+      [ RO4
+	LDREQ	LR,ThreeDFlags
+	TSTEQ	LR,#ThreeDFlags_NoFontBlending
+      ]
         ORREQ   R2, R2, #1:SHL:11
  ]
 
@@ -1966,13 +2147,30 @@ wrcrlp
         Push    "R0,x0,y0,x1,y1,R14"
       ]
 ;
+ [ RO4
+; MB FIX
+; as we removed the other side of this removing this as well might be a good idea
+;        LDR     R14,spaceinicon
+;        CMP     R14,#6                  ; needs at least 3*dx space left
+;        BPL     %FT01
+; end MB FIX
+ |
         LDR     R14,spaceinicon
         CMP     R14,#6                  ; needs at least 3*dx space left
         BPL     %FT01
+ ]
 ;
+ [ FullIconClipping
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_FullIconClipping
+        ADREQ   R14,oldclipx0
+        LDMEQIA R14,{x0,y0,x1,y1}
+        BLEQ    graphicswindow
+ |
         ADR     R14,oldclipx0
         LDMIA   R14,{x0,y0,x1,y1}
         BL      graphicswindow
+ ]
 01
         Pull    "R0,x0,y0,x1,y1,R14"
       [ No32bitCode
@@ -2340,7 +2538,14 @@ iconformatted_width_ok
         SUB     R6, R6, R14             ; y -:= linespacing
         SUB     R3, R8, R2, ASR #1      ; x := centre - x/2
  [ BlendedFonts
+      [ RO4
+        MOV     R2, #1 :SHL: 4 :OR: 1 :SHL: 7
+	LDR	LR,ThreeDFlags
+	TST	LR,#ThreeDFlags_NoFontBlending
+	ORREQ	R2,R2,#1:SHL:11
+      |
         MOV     R2, #1 :SHL: 4 :OR: 1 :SHL: 7 :OR: 1 :SHL: 11 ; as below + blend bit
+      ]
  |
         MOV     R2, #1 :SHL: 4 :OR: 1 :SHL: 7 ;Font_OS_Units | Font_GivenLength
  ]
@@ -2349,8 +2554,16 @@ iconformatted_width_ok
         SWI     XFont_Paint
 
  [ BlendedFonts
+      [ RO4
+	BVC	%FT01
+	TST 	R2,#1:SHL:11
+        BICEQ   R2, R2, #1:SHL:11
+        SWIEQ   XFont_Paint
+01
+      |
         BICVS   R2, R2, #1:SHL:11
         SWIVS   XFont_Paint
+      ]
  ]
 
         BLVS    LoseFont
@@ -2894,6 +3107,12 @@ spritesize
         Push    "R0,LR"
         BL      cachespritedata
 
+ [ RO4 :LOR: true
+	MOVVS	r3,#0			; if the call failed then the sprite probably
+	MOVVS	r4,#0			; doesn't exist so return 0 for width and height
+	BVS     %FT01
+ ]
+
         LDR     R14,sprite_log2px
         MOV     R3,R3,LSL R14
         LDR     R14,sprite_log2py
@@ -2901,6 +3120,7 @@ spritesize
         TST     R1,#if_halfsize
         MOVNE   R3,R3,ASR #1
         MOVNE   R4,R4,ASR #1
+01
         CLRV
         Pull    "R0,PC"                 ; must preserve R0 for icontext code
 
@@ -2929,6 +3149,41 @@ iconborder
 iconfilled
         B       solidrectangle          ; fill the background of the icon
 
+ [ ThreeDPatch
+iconfilledCheckMenu
+	TST	r1,#is_inverted		; if it's inverted
+	BNE	solidrectangle
+
+	LDR	r0,ThreeDFlags
+	TST	r0,#ThreeDFlags_TexturedMenus
+	BEQ	solidrectangle
+
+	LDR	r0,redrawhandle
+	CMP	r0,#nullptr
+	BEQ	solidrectangle
+	Abs	r0,r0
+	LDR	r0,[r0,#w_taskhandle]
+	CMP	r0,#-1			; if it's not a menu
+	BNE	solidrectangle
+
+	AND	r0,r1,#&F0000
+	TEQ	r0,#&D0000		; writable icons have esg set to &D
+	BEQ	%FT01
+	TEQ	r0,#&C0000		; the main menu item has ESG 12
+	BNE	solidrectangle
+
+	TST	r1,#if_text
+	TSTNE	r1,#if_sprite		; if it's not a text+sprite icon
+	BEQ	solidrectangle
+01
+	Push	"cx0-cy1,handle,lr"
+	Push	"x0-y1"
+	Pull	"cx0-cy1"
+	LDR	handle,redrawhandle
+	Abs	handle,handle
+	BL	ploticonbackgroundsprite
+	Pull	"cx0-cy1,handle,pc"
+ ]
 
 ;;----------------------------------------------------------------------------
 ;; Wimp_ReadPixTrans
@@ -4946,6 +5201,36 @@ int_set_icon_state
 
         TST     R14,#if_text
         BEQ     uiclp
+
+ [ BlendedFonts
+	; any selectable text+sprite icons must be fully redrawn
+	LDR	r0,ThreeDFlags
+	TST	r0,#ThreeDFlags_NoFontBlending
+	BNE	%FT01
+
+	AND	r0,r14,#if_buttontype
+	TEQ	r0,#4 :SHL: ib_buttontype
+	TEQNE	r0,#5 :SHL: ib_buttontype
+	TEQNE	r0,#7 :SHL: ib_buttontype
+	TEQNE	r0,#8 :SHL: ib_buttontype
+	TEQNE	r0,#9 :SHL: ib_buttontype
+	TEQNE	r0,#10 :SHL: ib_buttontype
+	TEQNE	r0,#11 :SHL: ib_buttontype
+	BEQ	mustredraw
+01
+ ]
+
+ [ ThreeDPatch
+	; if we get to here then it's a text+sprite unfilled icon
+	LDR	r0,ThreeDFlags
+	TST	r0,#ThreeDFlags_NoIconBgInTransWindows
+	BEQ	%FT90
+
+	LDRB	r0,[handle,#w_wbcol]
+	TEQ	r0,#&FF
+	BEQ	mustredraw
+90
+ ]
         LDR     R14,iconbarhandle
         Abs     R14,R14
         TEQ     handle,R14

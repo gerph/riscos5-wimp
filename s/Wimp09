@@ -582,7 +582,9 @@ addmessages Entry "R0-R7"
         LDR     R4,[WsPtr,R4]           ; get pointer to the task block
 
         LDR     R2,[R4,#task_messages]
-        CMP     R2,R2,ASR #31
+        CMP     R2,#nullptr
+        EXIT    EQ                      ; the real fix for the AddMessages-to-task-that-already-wants-them bug
+        CMP     R2,#0
         BNE     addmoremessages         ; add to the list if non-zero, create new block
 
         Push    "R3"
@@ -619,6 +621,18 @@ addmessages Entry "R0-R7"
 addmoremessages
         LDR     R1,[R4,#task_messagessize]
         LDR     R2,[R4,#task_messages]  ; current list information
+
+ [ RO4 :LAND: false ; This is too late to do this fix; if the app wants all messages, the the Wimp hasn't allocated a
+                    ; messages list, and so addmoremessages doesn't get called. Interestingly, this fix is undone in
+                    ; the patches to 4.02...
+; MB FIX
+; If the current message list has only the 0 terminator in it then the application wants all messages.
+; So, don't bother adding these new messages as that will stop all other messages getting through.
+	LDR	R14,[R2,#0]
+	TEQ	R14,#0
+	EXIT	EQ
+; end MB FIX
+ ]
 
         Push    "R3"
         MOV     R0,#ModHandReason_ExtendBlock
@@ -691,7 +705,7 @@ SWIWimp_RemoveMessages
 
         MOVS    R3,R0                   ; is there a messages list?
         CMPNE   R3,#nullptr
-        BEQ     ExitWimp                ; exit if there is no list currently defined
+        BEQ     ExitWimp                ; exit if there is no list supplied
 
         LDR     R4,taskhandle
 
@@ -719,6 +733,7 @@ removemessages Entry "R1-R2,R4-R8"
 
         LDR     R5,[R4,#task_messages]
         CMP     R5,R5,ASR #31           ; are there any messages listed?
+                                        ; (or does the task need to continue to receive all messages anyway?)
         LDRNE   R6,[R4,#task_messagessize]
         CMPNE   R6,#0
         EXIT    EQ                      ; if no messages then return
@@ -824,10 +839,9 @@ checkformessage
         Entry   "R0-R4"
 
         LDR     R0,[R3,#task_messages]
-        CMP     R0,R0,ASR #31           ; are the messages enabled?
-        LDRNE   R1,[R3,#task_messagessize]
-        CMPNE   R1,#0                   ; if there is is the list big enough?
-        EXIT    EQ                      ; no, so send them all of them
+        LDR     R1,[R3,#task_messagessize]
+        CMP     R0,#nullptr             ; are all messages enabled?
+        EXIT    EQ                      ; yes, so send all of them
 
         Debug   msgsel,"into check for message; block at, task, external =",R2,R3,R5
 

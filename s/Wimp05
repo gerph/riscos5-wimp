@@ -2716,6 +2716,46 @@ donearrow
 ; Exit:  R5 updated appropriately
 
 
+ [ DotsAsWordSeparators
+skipwordR
+        LDRB    R0,[R2,R5]              ; skip non-space and not '.'
+        CMP     R0,#' '
+	MOVLO	PC,LR
+
+	TEQNE	R0,#'.'
+        ADDNE   R5,R5,#1
+        BNE     skipwordR
+
+skipwordR2
+        LDRB    R0,[R2,R5]
+        CMP     R0,#' '
+	MOVLO	PC,LR
+
+	TEQNE	R0,#'.'
+        ADDEQ   R5,R5,#1                ; stop on first non-space char
+        BEQ     skipwordR2
+        MOV     PC,LR
+
+skipwordL
+        TEQ     R5,#0			; skip spaces and dots left
+        MOVEQ   PC,LR                   ; done
+        SUB     R5,R5,#1
+        LDRB    R0,[R2,R5]
+        TEQ     R0,#' '
+	TEQNE	R0,#'.'
+        BEQ     skipwordL
+
+skipwordL2
+        TEQ     R5,#0			; skip non space non dot left
+        MOVEQ   PC,LR
+        SUB     R5,R5,#1
+        LDRB    R0,[R2,R5]
+        TEQ     R0,#' '
+	TEQNE	R0,#'.'
+        BNE     skipwordL2
+        ADDEQ   R5,R5,#1                ; back to last non-space char
+        MOV     PC,LR
+ |
 skipwordR
         LDRB    R0,[R2,R5]              ; skip non-space
         CMP     R0,#32
@@ -2746,6 +2786,7 @@ skipwordL2
         BHI     skipwordL2
         ADDCS   R5,R5,#1                ; back to last non-space char
         MOV     PC,LR
+ ]
 
 
       [ UTF8
@@ -3240,7 +3281,7 @@ SWIWimp_CreateMenu
         STRNE   R0,menutaskhandle       ; new owner!
         BNE     foundallmenus
 
-        ADR     R6,menuselections
+        ADRL    R6,menuselections
         ADR     R7,menudata+4           ; NB allow for R5 = index - 4
 01
         LDR     R14,menuSP
@@ -3305,7 +3346,7 @@ foundallmenus
         LDR     R1,[R14,R5]
         TST     R1,#3
         SUBEQ   R1,R1,#m_header         ; recover header part
-        ADR     R14,menuselections
+        ADRL    R14,menuselections
         LDR     R4,[R14,R5]
         LDR     R14,[handle,#w_scy]
 
@@ -3328,6 +3369,7 @@ foundallmenus
         STRVC   R14,menuscrolly             ; extra parameter
         BLVC    int_create_menu_withscroll  ; keep unwinding stack after error
         MOVVC   R0,R4
+
         BLVC    menuhighlight
         B       %BT01
 02
@@ -3493,8 +3535,31 @@ int_create_menu_withscroll
         STR     R1,[wsptr,R14]          ; menudata <= maxhandle for dialogue box
         B       goopenwindow
 
+ [ ThreeDPatch
+CheckForColourMenu
+	ROUT
+	Push	"r0,userblk,lr"
+
+	MOV	r0,#0
+
+00	LDR	lr,[userblk,#mi_iflags]
+	AND	lr,lr,#if_bcol
+	TEQ	lr,#0
+	MOVNE	r0,#1
+	BNE	%FT01
+
+	LDR	lr,[userblk,#mi_mflags]
+	TST	lr,#mif_lastone
+	ADDEQ	userblk,userblk,#mi_size
+	BEQ	%BT00
+
+01	STR	r0,MenuIsColourMenu
+
+	Pull	"r0,userblk,pc"
+ ]
 ; create new sub-menu
 
+	ROUT
 createsubmenu TraceL sc
         ADRL    userblk,menuwindow      ; window 'template'
         MOV     R14, #-1                ; created window will be 'owned' by the Wimp
@@ -3570,6 +3635,11 @@ exitcountmenucode
         LDMIA   userblk!,{R1-R4}        ; colours,width,height,spacing
         Debug   menuparam,"Menu colours,width,height,gap",R1,R2,R3,R4
 
+ [ MinimumMenuHeight
+	CMP	R3,#44
+	MOVLO	R3,#44
+ ]
+
  [ :LNOT: NCMenus
         STR     R1,[handle,#w_tfcol]    ; 4 colours
  ]
@@ -3578,7 +3648,20 @@ exitcountmenucode
  [ NCMenus
         MOV     y1, #-24
  |
+  [ ThreeDPatch
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_Use3DBorders
+  	MOVNE	y1,#-4			; leave space at the top for the 3D border
+ 	MOVEQ	y1,#0
+      [ true
+        BL      CheckForColourMenu
+      |
+	TST	r14,#ThreeDFlags_TexturedMenus
+	BLNE	CheckForColourMenu
+      ]
+  |
         MOV     y1,#0
+  ]
         SUB     y1,y1,R4,ASR #1         ; subtract 1/2 gap
  ]
         SUB     y0,y1,R3
@@ -3598,14 +3681,29 @@ crmenuiconlp
         Debug   menuparam,"menu flags, ptr",R4,R5
 
         MOV     x0,#0
+      [ RO4
+        LDRB    x1,arrowIconWidth
+      |
         MOV     x1,#24
+      ]
         LDR     R1,reversedmenu         ; Is it a reversed menu?
         CMP     R1,#"\\"
         LDREQ   x0,menuiconwidth        ; Put it where the arrow is
+      [ RO4
+        LDREQB  R1,arrowIconWidth
+        ADDEQ   x0,x0,R1                ; supposed to be.
+        ADDEQ   x1,x0,R1
+      |
         ADDEQ   x0,x0,#24               ; supposed to be.
         ADDEQ   x1,x0,#24
+      ]
 
         LDR     R1,menutickflags
+ [ OldStyleColourMenus
+	LDR	R14,MenuIsColourMenu
+	TEQ	R14,#0
+	ORRNE	R1,R1,#if_filled
+ ]
         LDR     R14,[userblk]           ; flags of middle icon
         TST     R14,#if_fancyfont
         MOVNE   R2,#(0:SHL:ib_bcol):OR:(7:SHL:ib_fcol)
@@ -3636,7 +3734,9 @@ crmenuiconlp
         LDREQB  R14,[handle,#w_wbcol]   ; put menu colour into icon colour
         ANDEQ   R14,R14,#if_bcol:SHR:ib_bcol
         ORREQ   R1,R1,R14,LSL #ib_bcol
+  [ :LNOT: ThreeDPatch
         ORREQ   R1,R1,#if_filled        ; then treat it as filled
+  ]
  ]
         LDR     R14,[SP]
         TST     R14,#mif_writeable
@@ -3659,16 +3759,55 @@ crmenuiconlp
 01
         BIC     R1,R1,#if_esg2
 
+ [ ThreeDPatch
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_TexturedMenus
+	ORREQ	r1,r1,#if_filled	; if we're not using textures then make sure the icons are filled
+	BEQ	%FT90
+
+	LDR	r14,MenuIsColourMenu
+	TEQ	r14,#0
+	ORRNE	r1,r1,#if_filled
+	BNE	%FT90
+
+	TST	r1,#if_text
+	TSTNE	r1,#if_sprite		; if text+sprite icon
+	ORRNE	r1,r1,#if_filled	; then fill it so inverting works
+	BICEQ	r1,r1,#if_bcol
+	BICEQ	r1,r1,#if_filled	; else clear the background and unfill it
+90
+ ]
+
         AND     R14,R1,#if_buttontype   ; before clearing the buttontype (needed for
                                         ; correct caret behaviour)
         CMP     R14,#14 :SHL: 12        ; check for either type of writable
         ORRLT   R1,R1,#12:SHL:ib_esg    ; and set esg 12 for non-writable, and
         ORRGE   R1,R1,#13:SHL:ib_esg    ; esg 13 for writable
 
+ [ ThreeDPatch
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_TexturedMenus
+	BEQ	%FT90
+
+        AND     R14,R1,#if_buttontype
+	CMP     R14,#14 :SHL: 12        ; check for either type of writable
+	ORRGE	r1,r1,#if_filled	; fill the icon
+	BGE	%FT90
+
+	TST	r1,#if_sprite
+	LDREQ	r14,MenuIsColourMenu
+	TEQEQ	r14,#0
+	ORREQ	r1,r1,#7 :SHL: ib_bcol	; if the icon doesn't have a sprite then set the bg col to black
+90
+ ]
 ;        BIC     R1,R1,#if_buttontype
 
 ;        ORR     R1,R1,#13:SHL:ib_esg    ; set esg 13
+      [ RO4
+        LDRB    x0,arrowIconWidth
+      |
         MOV     x0,#24
+      ]
         LDR     R14,menuiconwidth
         ADD     x1,x0,R14
         Trace   menuw, "crmenuiconlp: flags set to ", X, R1
@@ -3679,12 +3818,26 @@ crmenuiconlp
 ; arrow
 
         MOV     x0,x1
+      [ RO4
+        LDRB    R1,arrowIconWidth
+        ADD     x1,x0,R1                ; width of arrow icon
+      |
         ADD     x1,x0,#24               ; width of arrow icon
+      ]
         LDR     R1,reversedmenu         ; Is it a reversed menu?
         CMP     R1,#"\\"
         MOVEQ   x0,#0                   ; Put it where tick is supposed to be
+      [ RO4
+        LDREQB  x1,arrowIconWidth
+      |
         MOVEQ   x1,#24
+      ]
         LDR     R1,menuarrowflags
+ [ OldStyleColourMenus
+	LDR	R14,MenuIsColourMenu
+	TEQ	R14,#0
+	ORRNE	R1,R1,#if_filled
+ ]
         LDR     R14,[R13,#4]            ; skip one stack item - get shaded bit
         ORR     R1,R1,R14               ; shade arrow too
         CMP     R5,#0                   ; if ptr <= 0, don't put arrow in
@@ -3700,8 +3853,14 @@ crmenuiconlp
 
         BL      createmenuicon          ; #### check for errors!
         LDR     x0,menuiconwidth
+      [ RO4
+        LDRB    R14,arrowIconWidth
+        ADD     x0,x0,R14
+        ADD     x1,x0,R14
+       |
         ADD     x0,x0,#24
         ADD     x1,x0,#24
+      ]
         ADDVS   sp, sp, #8
         BVS     yugnasty
 
@@ -3724,6 +3883,11 @@ crmenuiconlp
 
 ; finished - work out window size and open it
 
+ [ ThreeDPatch
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_Use3DBorders
+	SUBNE	y1,y1,#4
+ ]
         LDMIA   sp,{R1,cx0,cy1}         ; cx0,cy1 = coords of top-left
         ADD     cy0,cy1,y1
         ADD     cx1,cx0,x1              ; coords of bottom-right
@@ -3756,6 +3920,14 @@ goopenwindow TraceL sc
         SUBEQ   R14,cx1,cx0            ; if so, move left by width
         SUBEQ   cx1,cx1,R14
         SUBEQ   cx0,cx0,R14
+ [ RO4
+; [ ThreeDPatch :LAND: OldStyleColourMenus
+;	ADDNE	cx0,cx0,#4
+;	ADDNE	cx1,cx1,#4
+;	SUBEQ	cx0,cx0,#4
+;	SUBEQ	cx1,cx1,#4
+; ]
+ ]
         MOV     R14,#0
         STR     R14,externalcreate
 05
@@ -3813,7 +3985,7 @@ nomenufocus
         ADD     R1,R1,#4                ; -4 ==> no menus
         STR     R1,menuSP               ; stack is full ascending
         STR     R0,[R14,R1]
-        ADR     R14,menuselections      ; selection is always -1 if dialogue
+        ADRL    R14,menuselections      ; selection is always -1 if dialogue
         MOV     R2,#-1
         STR     R2,[R14,R1]
 
@@ -4186,8 +4358,13 @@ createmenuicon
 menutickflags   DCD     &000E001a       ; ESG 14, tick is a sprite
 menuarrowflags  DCD     &000F001a       ; ESG 15
   |
+   [ ThreeDPatch
+menutickflags   DCD     &000E001a       ; ESG 14, tick is a sprite
+menuarrowflags  DCD     &000F001a       ; ESG 15
+   |
 menutickflags   DCD     &000E003a       ; ESG 14, tick is a sprite
 menuarrowflags  DCD     &000F003a       ; ESG 15
+   ]
   ]
  |
 menutickflags   DCD     &000E0039       ; ESG 14, tick is text
@@ -4363,6 +4540,10 @@ rdrmlp1
         BNE     exitdottedlines         ; it's probably a dbox
 
         LDR     R2,[R1,#m_height-m_header]
+ [ MinimumMenuHeight
+	CMP	R2,#44
+	MOVLO	R2,#44
+ ]
         LDR     R3,[R1,#m_gap-m_header]
 
         LDRB    R0,[handle,#w_wfcol]
@@ -4381,10 +4562,98 @@ rdrmlp2
         SUB     y1,y1,#24               ; height of dotted line
         ADD     y0,y0,y1
         MOV     y0,y0,ASR #1            ; get average height
+ [ ThreeDPatch
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_Use3DBorders
+	TSTNE	R14,#ThreeDFlags_TexturedMenus
+	BEQ	%FT90
+	Push	"r0-r4,x0-y1"
+
+	ldr	r0,dy
+	sub	r0,r0,#1
+	add	y1,y1,#4			; move y coord up to the bottom of the separator bar
+	add	y1,y1,r0
+	bic	y1,y1,r0			; round y coord up to nearest whole number of pixels
+
+	ldr	r0,dy
+	sub	x1,x1,r0,LSL #1			; convert maxx to inclusive coords and move left my one pixel
+	add	x0,x0,r0			; move minx one pixel right
+	sub	r0,r0,#1
+	bic	x0,x0,r0			; round minx down to nearest pixel
+	add	x1,x1,r0
+	bic	x1,x1,r0			; round maxx up to nearest pixel
+
+		; bottom half of separator
+
+	LDR	r0,ThreeDFlags
+	TST	r0,#ThreeDFlags_UseAlternateMenuTexture
+	LDRNE	r0,truemenuborderfacecolour
+	LDREQ	r0,truewindowborderfacecolour
+	LDR	r3,ditheringflag
+	MOV	r4,#0
+	SWI	XColourTrans_SetGCOL
+
+	mov	r0,#96+4
+	sub	r1,x0,#16			; ensure it overlaps the left
+	add	r2,y1,#0
+	swi	XOS_Plot
+
+	mov	r0,#96+5
+	sub	r1,x1,#4
+	add	r2,y1,#3
+	swi	XOS_Plot
+
+	mov	r0,#80+0
+	mov	r1,#4
+	mov	r2,#0
+	swi	XOS_Plot
+
+	mov	r0,#80+1
+	mov	r1,#-3
+	mov	r2,#-3
+	swi	XOS_Plot
+
+		; top half of separator
+
+	LDR	r0,ThreeDFlags
+	TST	r0,#ThreeDFlags_UseAlternateMenuTexture
+	LDRNE	r0,truemenuborderoppcolour
+	LDREQ	r0,truewindowborderoppcolour
+	LDR	r3,ditheringflag
+	MOV	r4,#0
+	SWI	XColourTrans_SetGCOL
+
+	mov	r0,#96+4
+	add	r1,x1,#16			; ensure the left edge overlaps
+	add	r2,y1,#7
+	swi	XOS_Plot
+
+	mov	r0,#96+5
+	add	r1,x0,#4
+	add	r2,y1,#4
+	swi	XOS_Plot
+
+	mov	r0,#80+0
+	mov	r1,#-4
+	mov	r2,#0
+	swi	XOS_Plot
+
+	mov	r0,#80+1
+	mov	r1,#3
+	mov	r2,#3
+	swi	XOS_Plot
+
+	Pull	"r0-r4,x0-y1"
+	B	%FT91
+90
+ ]
 	Push	"R1-R2"
         Plot    &04,x0,y0
         Plot    &15,x1,y0               ; draw dotted line
 	Pull	"R1-R2"
+ [ ThreeDPatch
+91
+ ]
 nodtln
         TST     R4,#mif_lastone
         ADDEQ   R1,R1,#mi_size
@@ -4523,7 +4792,7 @@ trymenuhighlight
         Push    "R0-R4,LR"
 
         LDR     R1,menuSP
-        ADR     R14,menuselections
+        ADRL    R14,menuselections
         LDR     R1,[R14,R1]             ; R1 = previous selection index
         TEQ     R0,R1
         BEQ     menuh_altentry          ; must return with R14 = shaded flag
@@ -4535,7 +4804,7 @@ menuhighlight
         Push    "R0-R4,LR"
 
         LDR     R1,menuSP               ; must be in top menu
-        ADR     R14,menuselections
+        ADRL    R14,menuselections
         LDR     R4,[R14,R1]
         STR     R0,[R14,R1]
         BL      menuunhighlight         ; unhighlight selection in R4
@@ -4548,6 +4817,8 @@ menuhighlight
 menuh_altentry                          ; branched to from trymenuhighlight
         CMP     R0, #0                  ;; BJGA bugfix: exit immediately if no new selection -
         Pull    "R0-R4,PC", LT          ;; this is particularly important with a dialogue box!!
+        CMP     handle, #nullptr        ; another bugfix: make sure handle isn't null (eg when adjust-clicking on
+        Pull    "R0-R4,PC", EQ          ; a submenu with a writable item) - someday, work out why this happens...
 
         ADD     R4,R0,R0,ASL #1         ; now multiply by 3 and add 1
         ADD     R4,R4,#1                ; R4 = middle icon
@@ -4720,7 +4991,7 @@ scanmenus
         BL      closemenus              ; close down to one above
         BVS     exitscanmenu
 
-        ADR     R14,menuselections
+        ADRL    R14,menuselections
         LDR     R0,[R14,R1]
         ADD     R0,R0,R0,ASL #1         ; R0 <- R0 * 3
         ADD     R0,R0,#2                ; right-arrow icon
@@ -4846,6 +5117,9 @@ intopmenu
         BEQ     %FT06
         ADD     R14,R14,#i_bbx1                 ; menus are 0 1 2    but for auto menus
                                                 ;           3 4 5    R5 -> icon 1 or 4 etc., RHS is 2,5..
+      [ true
+        LDR     R14,[R14,R5,LSL #i_shift]       ; right-hand side of current icon is the way it alway used to be done
+      |
         LDR     R3,[handle,#w_nicons]
         SUB     R3,R3,#1                        ; icons start at 0
         TEQ     R3,R5                           ; bottom right menu entry? no more icons then
@@ -4863,6 +5137,7 @@ intopmenu
         CMP     R3,R14
         MOVGT   R14,R3                          ; further right
 05
+      ]
         ADD     R2,R2,R14                       ; get x coord
 06
         LDR     R14,[handle,#w_icons]
@@ -4874,6 +5149,11 @@ intopmenu
         SUB     R3,R3,R14                       ; it might have scrolled!
  [ NCMenus
         ADD     r3, r3, #24                     ; adjust for NCMenus border
+ ]
+ [ ThreeDPatch
+	LDR	r14,ThreeDFlags
+	TST	r14,#ThreeDFlags_Use3DBorders
+	ADDNE	r3,r3,#4			; adjust for 3D border
  ]
 
 ; if warning bit set, we can only send back a message at this stage
@@ -4899,7 +5179,7 @@ sendmenuwarning
         MOV     R14,#nullptr
         Push    "R14"                           ; terminator
         LDR     R4,menuSP                       ; copy menu selections
-        ADR     R5,menuselections               ; into block on stack
+        ADRL    R5,menuselections               ; into block on stack
 01
         LDR     R14,[R5,R4]
         Push    "R14"
@@ -4941,7 +5221,7 @@ notinamenu
         BVS     exitscanmenu
 
  [ :LNOT: KeyboardMenus
-        ADR     R14,menuselections
+        ADRL    R14,menuselections
         LDR     R4,[R14,R1]
         MOV     R0,#-1
         STR     R0,[R14,R1]             ; cancel selection
@@ -5017,7 +5297,7 @@ gomenuselect
         BL      checkhandle             ; get handle of 'whichmenu' window
         BVS     longjumpexit
 
-        ADR     R14,menuselections      ; get middle icon of trio
+        ADRL    R14,menuselections      ; get middle icon of trio
         LDR     R4,[R14,R1]
         ADDS    R4,R4,R4,ASL #1         ; multiply by 3
         BMI     clickongreyitem         ; looks at button state
@@ -5056,7 +5336,7 @@ notasubmenuclick
         BVS     longjumpexit
 
         MOV     R0,#0
-        ADR     R14,menuselections
+        ADRL    R14,menuselections
 
 copymlp
         LDR     R2,[R14,R0]
@@ -5115,13 +5395,27 @@ crmenuselection
         Pull    "R4"
         BVS     longjumpexit
         LDR     R1,whichmenu
-        ADR     R14,menuselections
+        ADRL    R14,menuselections
         STR     R0,[R14,R1]
         B       gomenuselect
 
 woggleicon
         Push    "R3,LR"
 
+ [ ThreeDPatch
+	LDR	R0,ThreeDFlags
+	TST	R0,#ThreeDFlags_TexturedMenus
+	BEQ	%FT01
+	Push	"R1-R4"
+	MOV	R0,R4
+	MOV	R1,#&07000000
+	ORR	R1,R1,#if_filled
+	MOV	R2,#&FF000000
+	ORR	R2,R2,#if_filled
+	BL	int_set_icon_state
+	Pull	"R1-R4"
+01
+ ]
         MOV     R3,#6                   ; 6 times!
 woglp
         Push    "R1-R4"
@@ -5196,7 +5490,7 @@ SWIWimp_GetMenuState
 ; scan list of menus until the specified window is found
 
         ADR     R3,menuhandles
-        ADR     R4,menuselections
+        ADRL    R4,menuselections
         LDR     R6,menuSP
         CMP     R6,#0
         BLT     %FT03
