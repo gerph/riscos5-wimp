@@ -2131,7 +2131,7 @@ WimpVisualFlags_Help		DCB "Change the visual appearance of the desktop.",cr
 				DCB "	Remove the filled box from behind the text in text+sprite icons.",cr
 				DCB "-NoIconBoxesInTransWindows",cr
 				DCB "	Remove the filled box from icons on windows similar to the pinboard.",cr
-				DCB "-Fully3DIconbar",cr
+				DCB "-Fully3DIconBar",cr
 				DCB "	Make the iconbar have a full 3D border.",cr
 				DCB "-NoFontBlending",cr
 				DCB "   Don't use font blending in icons.
@@ -2318,7 +2318,7 @@ Helptable
         Command WimpClickSubmenu,1,1,Status_Keyword_Flag:OR:International_Help,WimpClickSubmenuC
         ]
 	[ ThreeDPatch
-	Command WimpVisualFlags,15,0,International_Help
+	Command WimpVisualFlags,255,0,International_Help
 	]
         DCB     0
 

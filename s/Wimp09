@@ -157,8 +157,16 @@ makespritelist Entry   "R0-R4,R8-R9"
 
         Debug   sprite,"HeapSort: Items, At, Checker =",R0,R1,R2
 
+        TST     R1,#2_111:SHL:29        ; high address?
+        BNE     %FA37
         SWI     XOS_HeapSort            ; attempt to sort the list
-        Pull    "R3"                    ; restore original boundary for the list
+        B       %FA39
+37      Push    "R7"
+        MOV     R7,#0
+        SWI     XOS_HeapSort32          ; use new SWI with 32-bit address
+        Pull    "R7"
+
+39      Pull    "R3"                    ; restore original boundary for the list
 
 ; Now attempt to remove duplicates by simply scanning down the list from start to
 ; end.  This we do by checking first to see if we have reached the end, if we
@@ -679,8 +687,13 @@ sortmessages
         MOV     R0,R3,LSR #2            ; size of the list to be sorted
         MOV     R1,R2                   ; -> list to be sorted
         MOV     R2,#0                   ; sorting unsigned integers
+        TST     R1,#2_111:SHL:29
+        BNE     %FT55
         SWI     XOS_HeapSort
-
+        B       %FT57
+55      MOV     R7,#0
+        SWI     XOS_HeapSort32
+57
         Debug   msgsel,"list sorted and ready to rock and roll"
 
         EXIT

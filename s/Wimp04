@@ -5842,7 +5842,7 @@ errhandle
 
         ; It's dirty
         MyXError  WimpBadHandle
-        STR     R0,[sp]
+        STR     R0,[sp,#Proc_RegOffset]
         EXIT
         MakeErrorBlock WimpBadHandle
         LTORG
