@@ -59,7 +59,7 @@
         Option  TrueIcon3,              true :LAND: TrueIcon2   ; true colour support, phase 3 (windows)
                                                                 ; Icon bar pops to front when pointer
         Option  PoppingIconBar,         true:LAND::LNOT:DisableShiftF12 ; at bottom of screen
-        Option  OldStyleIconBar,        false                   ; Shift F12 behaviour like RISC OS <= 3.7
+        Option  OldStyleIconBar,        true                    ; Shift F12 behaviour like RISC OS <= 3.7
         Option  IconiseButton,          false                   ; Windows given iconise button
         Option  ChocolateScreen,        false                   ; Clean cached screen after redraw loops
         Option  KernelLocksFreePool,    false                   ; use OS_Memory 10 to lock Free Pool for Wimp_ClaimFreeMemory
