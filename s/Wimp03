@@ -379,6 +379,7 @@ SWIWimp_Poll
         ]
         BHS     err_badR3
 
+	CLRV				; make sure we don't leave V set
         TST     R0,#flag_pollword
         TSTNE   R0,#flag_pollfast       ; bottom bit set => poll quickly
         ORRNE   R3,R3,#1
