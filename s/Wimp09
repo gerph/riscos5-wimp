@@ -613,7 +613,7 @@ addmessages Entry "R0-R7"
         STRNE   R6,[R2],#4              ; copy a message number
         BNE     %BT20                   ; loop back until all checked
 
-        Pull    "R2,R3"
+        Pull    "R2,R6"
         B       sortmessages            ; ensure they are sorted
 
 ;..............................................................................
@@ -672,7 +672,9 @@ addmoremessages
         BNE     %BT40                   ; loop back until found
         B       %BT30                   ; if it doesn't then try another entry
 
-50      SUBS    r3, r6, r5              ; jb/ma 4/1/06 check what we did not use
+50      LDR     r3,[r2,#-4]             ; jb/ma 4/1/06 check size block actually is
+        SUB     r3,r3,#4                ; jb/ma 4/1/06 compensate for this block count
+        SUBS    r3,r6,r3                ; jb/ma 4/1/06 check what we did not use
                                         ; and give back any unused
 ;        MOV     R3,R6
         MOVNE   R0,#ModHandReason_ExtendBlock
@@ -687,9 +689,9 @@ addmoremessages
 ;        STR     R3,[R4,#task_messagessize]
 
 sortmessages
-        Debug   msgsel,"sort list at, size =",R2,R3
+        Debug   msgsel,"sort list at, size =",R2,R6
 
-        MOV     R0,R3,LSR #2            ; size of the list to be sorted
+        MOV     R0,R6,LSR #2            ; size of the list to be sorted
         MOV     R1,R2                   ; -> list to be sorted
         MOV     R2,#0                   ; sorting unsigned integers
         TST     R1,#2_111:SHL:29
@@ -796,11 +798,12 @@ removemessages Entry "R1-R2,R4-R8"
 40
         LDR     R3,[R4,#task_messagessize]  ; old size
         STR     R6,[R4,#task_messagessize]  ; new size
+block count
+        SUBS    r3,r6,r3                ; jb/ma 4/1/06 check what we did not use
+                                        ; and give back any unused
 
-        SUBS    R3,R6,R3                ; compute changed size needed
-        LDR     R2,[R4,#task_messages]
-        MOV     R0,#ModHandReason_ExtendBlock
-        BL     XROS_Module              ; attempt to reduce the block size
+        MOVNE   R0,#ModHandReason_ExtendBlock
+        BLNE    XROS_Module              ; attempt to reduce the block size
         STRVC   R2,[R4,#task_messages]  ; and then store updated block pointer
 
         Debug   msgsel,"after extend block: size of list =",R2,R6
