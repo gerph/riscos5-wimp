@@ -645,7 +645,6 @@ addmoremessages
         Push    "R3"
         MOV     R0,#ModHandReason_ExtendBlock
         MOV     r3, r5                  ;  jb/ma 4/1/06 r5 is already the extra space required
-;        ADD     R3,R1,R5
         BL     XROS_Module              ; attempt to extend it
         Pull    "R3"                    ; preserve the list pointer
         EXIT    VS
@@ -672,11 +671,9 @@ addmoremessages
         BNE     %BT40                   ; loop back until found
         B       %BT30                   ; if it doesn't then try another entry
 
-50      LDR     r3,[r2,#-4]             ; jb/ma 4/1/06 check size block actually is
-        SUB     r3,r3,#4                ; jb/ma 4/1/06 compensate for this block count
-        SUBS    r3,r6,r3                ; jb/ma 4/1/06 check what we did not use
-                                        ; and give back any unused
-;        MOV     R3,R6
+50      ADD     r3,r1,r5                ; jb/ma 18/1/06 total needed + claimed
+        SUBS    r3,r6,r3                ; jb/ma 18/1/06 actual less above
+                                        ; so give back any not needed
         MOVNE   R0,#ModHandReason_ExtendBlock
         BLNE   XROS_Module              ; reduce back to a meaningful size
         EXIT    VS
@@ -686,7 +683,6 @@ addmoremessages
         STR     R2,[R4,#task_messages]  ; update to contain new size
         STR     R6,[R4,#task_messagessize] ; jb/ma 4/1/06 this is the actual size
                                            ; r3 is only the change in size
-;        STR     R3,[R4,#task_messagessize]
 
 sortmessages
         Debug   msgsel,"sort list at, size =",R2,R6
