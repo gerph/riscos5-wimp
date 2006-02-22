@@ -747,16 +747,16 @@ removemessages Entry "R1-R2,R4-R8"
 
         LDR     R4,[WsPtr,R4]           ; -> task block
 
-        LDR     R5,[R4,#task_messages]
-        CMP     R5,R5,ASR #31           ; are there any messages listed?
+        LDR     R2,[R4,#task_messages]
+        CMP     R2,R2,ASR #31           ; are there any messages listed?
                                         ; (or does the task need to continue to receive all messages anyway?)
         LDRNE   R6,[R4,#task_messagessize]
         CMPNE   R6,#0
         EXIT    EQ                      ; if no messages then return
 
-        Debug   msgsel,"selective remove list, size =",R5,R6
+        Debug   msgsel,"selective remove list, size =",R2,R6
 
-; R5 -> messages list
+; R2 -> messages list
 ; R6 = size of the list to be scanned
 
 10      MOV     R7,#0                   ; index into the list
@@ -773,7 +773,7 @@ removemessages Entry "R1-R2,R4-R8"
 20      CMP     R7,R6                   ; have we reached the end of the list yet?
         BGE     %BT10                   ; loop back as finished scanning
 
-        LDR     R0,[R5,R7]              ; get message we are looking at
+        LDR     R0,[R2,R7]              ; get message we are looking at
         CMP     R0,R8                   ; remove this one?
         ADDNE   R7,R7,#4
         BNE     %BT20                   ; loop back until all checked
@@ -782,8 +782,8 @@ removemessages Entry "R1-R2,R4-R8"
 
 30      CMP     R7,R6                   ; have we finished yet?
         ADDLT   R14,R7,#4
-        LDRLT   R0,[R5,R14]
-        STRLT   R0,[R5,R7]              ; copy the next message into the current slot
+        LDRLT   R0,[R2,R14]
+        STRLT   R0,[R2,R7]              ; copy the next message into the current slot
         ADDLT   R7,R7,#4                ; advance the pointer
         BLT     %BT30                   ; loop back until all checked
 
