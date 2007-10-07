@@ -14,10 +14,10 @@
 Module_MajorVersion     SETS    "5.00"
 Module_Version          SETA    500
 Module_MinorVersion     SETS    ""
-Module_Date             SETS    "23 Feb 2006"
-Module_ApplicationDate  SETS    "23-Feb-06"
+Module_Date             SETS    "07 Oct 2007"
+Module_ApplicationDate  SETS    "07-Oct-07"
 Module_ComponentName    SETS    "Wimp"
-Module_ComponentPath    SETS    "RiscOS/Sources/Desktop/Wimp"
+Module_ComponentPath    SETS    "castle/RiscOS/Sources/Desktop/Wimp"
 Module_FullVersion      SETS    "5.00"
-Module_HelpVersion      SETS    "5.00 (23 Feb 2006)"
+Module_HelpVersion      SETS    "5.00 (07 Oct 2007)"
                         END
