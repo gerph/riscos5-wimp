@@ -1,6 +1,6 @@
 ;
 ; This file is automatically maintained by srccommit, do not edit manually.
-; Last processed by srccommit version: 1.2.
+; Last processed by srccommit version: 1.1.
 ;
                         GBLS    Module_MajorVersion
                         GBLA    Module_Version
@@ -11,13 +11,13 @@
                         GBLS    Module_HelpVersion
                         GBLS    Module_ComponentName
                         GBLS    Module_ComponentPath
-Module_MajorVersion     SETS    "5.00"
-Module_Version          SETA    500
+Module_MajorVersion     SETS    "5.01"
+Module_Version          SETA    501
 Module_MinorVersion     SETS    ""
-Module_Date             SETS    "07 Oct 2007"
-Module_ApplicationDate  SETS    "07-Oct-07"
+Module_Date             SETS    "13 Jul 2008"
+Module_ApplicationDate  SETS    "13-Jul-08"
 Module_ComponentName    SETS    "Wimp"
 Module_ComponentPath    SETS    "castle/RiscOS/Sources/Desktop/Wimp"
-Module_FullVersion      SETS    "5.00"
-Module_HelpVersion      SETS    "5.00 (07 Oct 2007)"
+Module_FullVersion      SETS    "5.01"
+Module_HelpVersion      SETS    "5.01 (13 Jul 2008)"
                         END

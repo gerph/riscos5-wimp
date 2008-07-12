@@ -206,47 +206,18 @@ watchdognext
         TEQ     R0,R14                  ; current task going to die?
         BEQ     %FT05
 
-        LDR     R7,taskhandle
-        Push    userblk
-        BL      pageintask
-        Pull    userblk
+        MOV     R7, R14                 ; keep [taskhandle] so we can restore it later
+        STR     R0, taskhandle
+        BL      fulltaskhandle          ; R14 = full task handle for watchdogtask
+        STR     R7, taskhandle
 
-             ; current task already paged in
-        SWI     XWimp_CloseDown
-
-; taken from wimp_poll...
-
-        LDR     R14,ptrtask
-        LDR     R5,taskhandle
-        TEQ     R5,R14
-        MOVEQ   R14,#nullptr            ; avoid ptr_leaving_window!
-        STREQ   R14,ptrwindow
-;
-        MOV     R0,#EscapeHandler       ; the domain is about to die -
-        SWI     XOS_ReadDefaultHandler  ; prevent nasty handlers from being
-        SWIVC   XOS_ChangeEnvironment   ; called when they shouldn't be!
-;
-        MOV     R0,#EventHandler
-        SWI     XOS_ReadDefaultHandler
-        SWIVC   XOS_ChangeEnvironment
-;
-        MOV     R0,#UpCallHandler
-        SWI     XOS_ReadDefaultHandler
-        SWIVC   XOS_ChangeEnvironment
-;
-        BL      deallocatependingtask   ; delete task block (gone for good)
-                                        ; reclaim memory as well!
-        MOV     R0,#0                   ; 'Press SPACE' if anything printed
-        BL      int_commandwindow       ; can't call SWI since task is dead!
-        CLRV                            ; ignore errors
-
-        STR     R7,newtaskhandle
-        Push    userblk
-        BL      pageintask
-        Pull    userblk
+        MOV     R0, R14
+        LDR     R1, taskidentifier5
+        SWI     XWimp_CloseDown         ; kill the selected task (!= current task)
 
         Pull    "R0-R7,PC"
 
+taskidentifier5 DCB "TASK"
 
 05
         SWI     XHourglass_Smash        ; turn off hourglass (if displayed)
