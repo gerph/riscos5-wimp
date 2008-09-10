@@ -427,71 +427,89 @@ ct_grey         = lightgrey, lightgrey, lightgrey, lightgrey
 ;; Handle replaceable window gadgets, this is simply a set of sprites which
 ;; can be used to replace all the window bits and bobs within the system.
 ;;
-;; All icons are allowed to give two states; normal + pressed, all gadgets
-;; must be defined with the same palette and same mode, mixing is not
-;; allowed.  Sprites are allowed to have mode prefix to allow different
-;; depths to be supported.
+;; All icons are allowed to give four states;
+;; - normal,         this is the default state of an icon
+;; - pressed normal, used when a mouse button is depressed over the icon
+;; - focus,          used when window has the input focus
+;; - pressed focus,  window has focus and mouse button is down over icon
+;;
+;; all gadgets must be defined with the same palette and same mode,
+;; mixing is not allowed.  Sprites are allowed to have mode suffix
+;; to allow different depths to be supported.
 ;;-----------------------------------------------------------------------------
 
 
 ;;-----------------------------------------------------------------------------
 ;; Define the list of sprites and its workspace for the caching block.
 ;;
-;; The table describes the sprite name and which information is important, such
-;; as its width + depth.
+;; The table describes the sprite name and which information is important,
+;; such as its width + depth.
 ;;
+;; The table is built up of four subtables, one for each state of an icon.
+;; The LoopCnt variable determines which subtable will be built;
+;; 0, 1, 2, 3 for normal, pressed normal, focus, pressed focus.
 ;;-----------------------------------------------------------------------------
 
 spritetable
 
         ^ 0
-        AddIcon back,,"bicon", back_width, title_height
-        AddIcon close,,"cicon", close_width, title_height
-        AddIcon toggle,,"ticon", vscroll_width, title_height
-        AddIcon toggle1,,"ticon1", vscroll_width, title_height
-        AddIcon size,,"sicon", vscroll_width, hscroll_height
+
+        GBLA LoopCnt
+
+LoopCnt SETA 0
+
+        WHILE LoopCnt < 4
+
+        AddIcon LoopCnt,back,,"bicon", back_width, title_height
+        AddIcon LoopCnt,close,,"cicon", close_width, title_height
+        AddIcon LoopCnt,toggle,,"ticon", vscroll_width, title_height
+        AddIcon LoopCnt,toggle1,,"ticon1", vscroll_width, title_height
+        AddIcon LoopCnt,size,,"sicon", vscroll_width, hscroll_height
         [ IconiseButton
-	AddIcon iconise,,"iicon", iconise_width, title_height
-	]
+        AddIcon LoopCnt,iconise,,"iicon", iconise_width, title_height
+        ]
 
-        AddIcon up,,"uicon", vscroll_width, up_height
-        AddIcon down,,"dicon", vscroll_width, down_height
-        AddIcon right,,"ricon", right_width, hscroll_height
-        AddIcon left,,"licon", left_width, hscroll_height
+        AddIcon LoopCnt,up,,"uicon", vscroll_width, up_height
+        AddIcon LoopCnt,down,,"dicon", vscroll_width, down_height
+        AddIcon LoopCnt,right,,"ricon", right_width, hscroll_height
+        AddIcon LoopCnt,left,,"licon", left_width, hscroll_height
 
-        AddIcon tbarlcap,,,title_left,title_height
-        AddIcon tbarmidt,,,title_sectionwidth,title_topheight
-        AddIcon tbarmidb,,,title_sectionwidth,title_bottomheight
-        AddIcon tbarrcap,,,title_right,title_height
+        AddIcon LoopCnt,tbarlcap,,,title_left,title_height
+        AddIcon LoopCnt,tbarmidt,,,title_sectionwidth,title_topheight
+        AddIcon LoopCnt,tbarmidb,,,title_sectionwidth,title_bottomheight
+        AddIcon LoopCnt,tbarrcap,,,title_right,title_height
 
-        AddIcon vwelltcap,no,,vscroll_width,vscroll_top
-        AddIcon vwellt,no,,vscroll_width,vscroll_topfill
+        AddIcon LoopCnt,vwelltcap,no,,vscroll_width,vscroll_top
+        AddIcon LoopCnt,vwellt,no,,vscroll_width,vscroll_topfill
 
-        AddIcon vbart,,,vscroll_width,vscroll_blobtop
-        AddIcon vbarmid,,,vscroll_width,vscroll_blobfill
-        AddIcon vbarb,,,vscroll_width,vscroll_blobbottom
+        AddIcon LoopCnt,vbart,,,vscroll_width,vscroll_blobtop
+        AddIcon LoopCnt,vbarmid,,,vscroll_width,vscroll_blobfill
+        AddIcon LoopCnt,vbarb,,,vscroll_width,vscroll_blobbottom
 
-        AddIcon vwellb,no,,vscroll_width,vscroll_bottomfill
-        AddIcon vwellbcap,no,,vscroll_width,vscroll_bottom
+        AddIcon LoopCnt,vwellb,no,,vscroll_width,vscroll_bottomfill
+        AddIcon LoopCnt,vwellbcap,no,,vscroll_width,vscroll_bottom
 
-        AddIcon hwelllcap,no,,hscroll_left,hscroll_height
-        AddIcon hwelll,no,,hscroll_leftfill,hscroll_height
+        AddIcon LoopCnt,hwelllcap,no,,hscroll_left,hscroll_height
+        AddIcon LoopCnt,hwelll,no,,hscroll_leftfill,hscroll_height
 
-        AddIcon hbarl,,,hscroll_blobleft,hscroll_height
-        AddIcon hbarmid,,,hscroll_blob,hscroll_height
-        AddIcon hbarr,,,hscroll_blobright,hscroll_height
+        AddIcon LoopCnt,hbarl,,,hscroll_blobleft,hscroll_height
+        AddIcon LoopCnt,hbarmid,,,hscroll_blob,hscroll_height
+        AddIcon LoopCnt,hbarr,,,hscroll_blobright,hscroll_height
 
-        AddIcon hwellr,no,,hscroll_rightfill,hscroll_height
-        AddIcon hwellrcap,no,,hscroll_right,hscroll_height
+        AddIcon LoopCnt,hwellr,no,,hscroll_rightfill,hscroll_height
+        AddIcon LoopCnt,hwellrcap,no,,hscroll_right,hscroll_height
 
       [ hvblip
-        AddIcon hblip,,,hscroll_blipwidth,hscroll_height
-        AddIcon vblip,,,vscroll_width,vscroll_blipheight
+        AddIcon LoopCnt,hblip,,,hscroll_blipwidth,hscroll_height
+        AddIcon LoopCnt,vblip,,,vscroll_width,vscroll_blipheight
       ]
+
+LoopCnt SETA LoopCnt+1
+        WEND
 
 ; this must always be the *LAST* sprite in the list!
 
-        AddIcon blank,no,"blicon",vscroll_width,hscroll_height
+        AddIcon 0,blank,no,"blicon",vscroll_width,hscroll_height
 
         ALIGN
 
@@ -710,7 +728,7 @@ cachetoolspriteaddress ; [spritename], [thisCBptr], [lengthflags] as for cachesp
         SUBS    R5,R5,#'0'
         SUB     R6,R6,#'0'
         MOVEQ   R5,#2
-        MOVEQ   R6,#8                   ; pretend '0' was '28' so we try '24' next
+        MOVEQ   R6,#8                   ; pretend '0' was '28' so we try '24'�next
         TEQ     R6,#3
         MOVEQ   R6,#4                   ; pretend '23' was '24' so we try '22' next
 
@@ -1064,8 +1082,70 @@ cachetoolspriteaddress ; [spritename], [thisCBptr], [lengthflags] as for cachesp
         MOV     R14,#8                  ; this one is constant = defines distance of non-changing borders
         STRB    R14,scroll_sidemargin
 ;
+        BL      EnsureToolIcons
+
         EXITS
         LTORG
+
+;-------------------------------------------------------------------------------
+; Ensure that all the various formats of the toolicons have valid sprites.
+; We'll assume that the plain toolicon sprites are all present. First we
+; check the pressed toolicon sprites. If one or more are missing then we
+; replace them by their non-pressed equivalent.
+; Next we check all the focus icons, missing icons are replaced with plain
+; ones and missing pressed icons are replaced with pressed plain ones.
+;-------------------------------------------------------------------------------
+EnsureToolIcons
+        Entry   "R0-R9"
+
+        MOV     R9,#tool_blank          ;
+
+;        Debug   perth,"number of toolicons in total = ",R9
+
+        MOV     R9,R9,LSR #4            ; number of different tool icons
+
+;        Debug   perth,"number of toolicons per set = ",R9
+
+        MOV     R0,R9                   ; number of icons to do
+        LDR     R1,tool_list            ; -> list of plain toolicons
+        ADD     R2,R1,R9,LSL #2         ; -> list of pushed toolicons
+        ADD     R3,R2,R9,LSL #2         ; -> list of plain focus toolicons
+        ADD     R4,R3,R9,LSL #2         ; -> list of pushed focus toolicons
+
+        ;------ Move through the list of pushed plain tools and
+        ;       replace missing ones with their non-pushed version
+
+01      LDR     R6,[R2],#4              ; get pushed toolicon
+        LDR     R5,[R1],#4              ; get plain toolicon
+        TEQ     R6,#0                   ; is there a pushed icon?
+        STREQ   R5,[R2,#-4]             ; if not, copy in the plain icon
+
+        ;------ Now do the same for the pushed focus tools
+
+        LDR     R6,[R4],#4              ; get pushed focus toolicon
+        LDR     R5,[R3],#4              ; get plain focus toolicon
+        TEQ     R6,#0                   ; is there a pushed focus icon?
+        STREQ   R5,[R4,#-4]             ; if not, copy in the plain focus icon
+
+        SUBS    R0,R0,#1                ; have we done them all?
+        BNE     %BT01                   ; if not, go back for next one
+
+        ;------ Now check the focus icons, use plain icons for any missing
+
+        MOV     R0,R9,LSL #1            ; number of icons to do
+        LDR     R1,tool_list            ; -> list of plain toolicons
+        ADD     R2,R1,R9,LSL #3         ; -> list of focus toolicons
+
+02      LDR     R3,[R2],#4              ; get focus version of toolicon
+        LDR     R4,[R1],#4              ; get plain version of toolicon
+        TEQ     R3,#0                   ; is there a focus version?
+        STREQ   R4,[R2,#-4]             ; if not, copy in the plain version
+
+        SUBS    R0,R0,#1                ; have we done them all?
+        BNE     %BT02                   ; if not, go back for next one
+
+        EXIT
+
 
 ;..............................................................................
 
@@ -1241,7 +1321,7 @@ ToolSprites_Code Entry "R0"
 int_toolsprites Entry "R1-R6"
 
         MOVS    R1,R0                   ; if null then use default tools
-        ADREQ   R1,default_tools
+        ADREQL  R1,default_tools
 ;
         DebugS  tools,"ToolSprites =",R1
 ;
@@ -1702,8 +1782,15 @@ plot_windowglyph Entry "R0-R9"
         ADRNEL  R14,glyphs_normal       ; -> selection table for the glyph
         LDRB    R14,[R14,R2]            ; = offset into tool list block
 
+        LDR     R0, [handle, #w_flags]  ; get window flags
+        TST     R0, #ws_hasfocus        ; does our window have the input focus?
+        MOVEQ   R0, #0
+        MOVNE   R0, #tool_blank
+        MOVNE   R0,R0,LSR #1
+
         LDR     R2,tool_list
         TEQ     R2,#0                   ; Tool list present?
+        ADDNE   R2,R2,R0
         LDRNE   R2,[R2,R14]             ; = address of sprite to be plotted
         TEQNE   R2,#0
       [ debugtools
@@ -2033,13 +2120,14 @@ dofunkytitlebar EntryS "R0-R11"
         LDR     R2,title_topheight
         SUB     y1,y1,R2                ; adjust to include the top height
 ;
-        LDR     R1,tool_list            ; -> list of the glyphs
-        MOV     R3,x0
-        MOV     R4,y0                   ; x,y co-ordinates to plot title sprites at
+        MOV     R0,#tool_blank          ;
+        LDR     R1,tool_list            ; -> tool sprite list
 ;
-        ADRL    R0,tool_plotparams
-        LDMIA   R0,{R0,R5,R6,R7}        ; R0,R5-R7 => sprite op information
-        Push    "R10,R11"               ; preserve these - they are important
+; is it our window that has input focus?
+;
+        LDR     R2,[handle, #w_flags]   ; get window flags
+        TST     R2,#ws_hasfocus         ; does our window have the input focus?
+        ADDNE   R1,R1,R0,LSR #1         ;
 ;
 ; is it our window that is highlighted?
 ;
@@ -2047,7 +2135,14 @@ dofunkytitlebar EntryS "R0-R11"
         CMP     R2,handle
         LDREQ   R2,border_iconselected
         CMPEQ   R2,#windowicon_title    ; if its our window + the title bar then ... oh no!
-        BEQ     %FT20                   ; attempt to plot using pushed jobbies
+        ADDEQ   R1,R1,R0,LSR #2
+;
+        MOV     R3,x0
+        MOV     R4,y0                   ; x,y co-ordinates to plot title sprites at
+;
+        ADRL    R0,tool_plotparams
+        LDMIA   R0,{R0,R5,R6,R7}        ; R0,R5-R7 => sprite op information
+        Push    "R10,R11"               ; preserve these - they are important
 ;
 ; prep the registers ready for advancing along the title bar - hut.. one.. two.. three.. four..
 ;
@@ -2083,42 +2178,7 @@ dofunkytitlebar EntryS "R0-R11"
         SUB     R3,R3,R11               ; move back from right edge to plot right cap
         LDR     R2,[R1,#tool_tbarrcap]
         BL      Tool_SpriteOp
-        B       %FT30
-;
-; *selected* handle plotting the title bar
-;
 
-20      LDR     R10,title_sectionwidth  ; width of the title bar sections
-        LDR     R11,dx
-        ADD     R10,R10,R11             ; including an extra pixel!
-
-        LDR     R2,[R1,#tool_ptbarlcap]
-        BL      Tool_SpriteOp
-        LDR     R2,title_left           ; plot the left hand edge
-        ADD     R3,R3,R2
-        ADD     R3,R3,R11               ; and then advance ready for next section
-25
-        CMP     R3,x1                   ; have we finished yet?
-        BGT     %FT35                   ; yes, so exit
-;
-        LDR     R2,[R1,#tool_ptbarmidb]
-        BL      Tool_SpriteOp            ; ... bottom
-;
-        Push    "R4"
-        LDR     R2,[R1,#tool_ptbarmidt]
-        MOV     R4,y1
-        BL      Tool_SpriteOp
-        Pull    "R4"                    ; ... top
-;
-        ADD     R3,R3,R10
-        B       %BT25
-35
-        LDR     R2,title_right
-        SUB     R3,x1,R2
-        SUB     R3,R3,R11               ; move back from right edge to plot right cap
-        LDR     R2,[R1,#tool_ptbarrcap]
-        BL      Tool_SpriteOp
-30
         Pull    "R10-R11"               ; all done so balance the stack
 ;
         ADR     x0,oldclipx0
@@ -2215,7 +2275,12 @@ dofunkyvscroll EntryS "R0-R11"
 ;
         LDR     R1,dy                   ; single pixel at screen resolution
         LDR     R3,[sp,#Proc_RegOffset+sp_x0]
+
+        LDR     R0,[handle, #w_flags]   ; get window flags
+        TST     R0,#ws_hasfocus         ; does our window have the input focus?
         LDR     R10,tool_list           ; -> tool sprite list
+        MOVNE   R0,#tool_blank          ;
+        ADDNE   R10,R10,R0,LSR #1       ;
 ;
         ADRL    R0,tool_plotparams
         LDMIA   R0,{R0,R5,R6,R7}        ; get the plotting parameters
@@ -2288,11 +2353,13 @@ dofunkyvscroll EntryS "R0-R11"
         LDREQ   R14,border_iconselected
         CMPEQ   R14,#windowicon_verticalbar
       ]
-        BEQ     %FT20                   ; do it selected then!
 
-; plot the scroll sausage bit in the middle *non selected*
+        MOVEQ   R2,#tool_blank          ;
+        ADDEQ   R10,R10,R2,LSR #2
 
-        LDR     R2,[R10,#tool_vbarb]
+; now plot the scroll sausage bit in the middle
+
+20      LDR     R2,[R10,#tool_vbarb]
         BL      Tool_SpriteOp
         LDR     R14,vscroll_blobbottom
         ADD     R4,R4,R14
@@ -2314,39 +2381,8 @@ dofunkyvscroll EntryS "R0-R11"
         BL      Tool_SpriteOp            ; and put the end cap on
 ;
       [ hvblip
-        LDR     R10,[R10,#tool_vblip]   ; plot blip if its present
-        B       %FT30
-      |
-        B       %FT40
-      ]
-
-; now plot the scroll sausage bit in the middle *selected*
-
-20      LDR     R2,[R10,#tool_pvbarb]
-        BL      Tool_SpriteOp
-        LDR     R14,vscroll_blobbottom
-        ADD     R4,R4,R14
-        ADD     R4,R4,R1                ; base of the area
 ;
-        LDR     R2,[R10,#tool_pvbarmid]
-10
-        CMP     R4,R11
-        BLLE    Tool_SpriteOp
-        LDRLE   R14,vscroll_blobfill
-        ADDLE   R4,R4,R14
-        ADDLE   R4,R4,R1
-        BLE     %BT10                   ; loop back until blob section plotted
-;
-        LDR     R14,vscroll_blobtop
-        SUB     R4,R11,R14
-        SUB     R4,R4,R1
-        LDR     R2,[R10,#tool_pvbart]
-        BL      Tool_SpriteOp            ; and put the end cap on
-;
-      [ hvblip
-;
-        LDR     R10,[R10,#tool_pvblip]
-30
+        LDR     R10,[R10,#tool_vblip]
         TEQ     R10,#0                  ; is there a vertical blip on this scroll bar?
         BEQ     %FT40
 ;
@@ -2441,7 +2477,12 @@ dofunkyhscroll EntryS "R0-R11"
 ;
         LDR     R1,dx                   ; single pixel at screen resolution
         LDR     R4,[sp,#Proc_RegOffset+sp_y0]
+
+        LDR     R0,[handle, #w_flags]   ; get window flags
+        TST     R0,#ws_hasfocus         ; does our window have the input focus?
         LDR     R10,tool_list           ; -> tool sprite list
+        MOVNE   R0,#tool_blank          ;
+        ADDNE   R10,R10,R0,LSR #1       ;
 ;
         ADRL    R0,tool_plotparams
         LDMIA   R0,{R0,R5,R6,R7}        ; get the plotting parameters
@@ -2513,48 +2554,13 @@ dofunkyhscroll EntryS "R0-R11"
         LDREQ   R14,border_iconselected
         CMPEQ   R14,#windowicon_horizbar
       ]
-        BEQ     %FT35
-;
-; handle plotting the horizontal scroll sausage *non selected*
-;
-        LDR     R2,[R10,#tool_hbarl]
 
-        Debug   scroll,"tool_hbarl",R2
+        MOVEQ   R2,#tool_blank          ;
+        ADDEQ   R10,R10,R2,LSR #2
 
-        BL      Tool_SpriteOp
-        LDR     R14,hscroll_blobleft
-        ADD     R3,R3,R14
-        ADD     R3,R3,R1
-;
-        LDR     R2,[R10,#tool_hbarmid]
-30
-        CMP     R3,R11
-        BLLT    Tool_SpriteOp
-        LDRLT   R14,hscroll_blob
-        ADDLT   R3,R3,R14
-        ADDLT   R3,R3,R1
-        BLT     %BT30
-;
-        LDR     R2,[R10,#tool_hbarr]
-;
-        Debug   scroll,"tool_hbarr",R2
-;
-        LDR     R14,hscroll_blobright
-        SUB     R3,R11,R14
-        SUB     R3,R3,R1,ASR #1         ; Round
-;
-        BL      Tool_SpriteOp
-;
-      [ hvblip
-        LDR     R10,[R10,#tool_hblip]
-        B       %FT40
-      |
-        B       %FT50
-      ]
+; handle plotting the horizontal scroll sausage
 
-; handle plotting the horizontal scroll sausage *selected*
-
-35      LDR     R2,[R10,#tool_phbarl]
+35      LDR     R2,[R10,#tool_hbarl]
 
         Debug   scroll,"tool_phbarl",R2
 
@@ -2563,7 +2569,7 @@ dofunkyhscroll EntryS "R0-R11"
         ADD     R3,R3,R14
         ADD     R3,R3,R1
 ;
-        LDR     R2,[R10,#tool_phbarmid]
+        LDR     R2,[R10,#tool_hbarmid]
 38
         CMP     R3,R11
         BLLT    Tool_SpriteOp
@@ -2572,7 +2578,7 @@ dofunkyhscroll EntryS "R0-R11"
         ADDLT   R3,R3,R1
         BLT     %BT38
 ;
-        LDR     R2,[R10,#tool_phbarr]
+        LDR     R2,[R10,#tool_hbarr]
 
         Debug   scroll,"tool_phbarr",R2
 
@@ -2583,8 +2589,7 @@ dofunkyhscroll EntryS "R0-R11"
 ;
       [ hvblip
 ;
-        LDR     R10,[R10,#tool_phblip]
-40
+        LDR     R10,[R10,#tool_hblip]
         TEQ     R10,#0                  ; is there a vertical blip on this scroll bar?
         BEQ     %FT50
 ;

@@ -8204,6 +8204,11 @@ redrawoutlp_done_tracing
         BLNE    maketoollist            ; No then rebuild tool_list
         LDRNE   R4,tool_list
 01
+        TEQ     R4, #0                  ; Empty?
+        TSTNE   R3, #ws_hasfocus        ; does our window have the input focus?
+        MOVNE   R14, #tool_blank        ; if so, get index of last icon
+        ADDNE   R4,R4,R14,LSR #1        ; r4 -> upper table half (=focus icons)
+
       [ TrueIcon3
         LDR     R14, titlecolour
         LDR     R0, =&BBBBBB00
@@ -8274,7 +8279,7 @@ redrawoutlp_done_tracing
         TEQNE   R2,#0                   ; plot using sprites?
         BLNE    dofunkytitlebar         ; yes, sir-re bob!
         ADDEQ   R2,handle,#w_title
-        BLEQ    drawicon_system         ; take note of if_indirected etc.
+        BLEQ    drawicon_system         ; take note of if_indirected et�.
       [ TrueIcon3 :LAND: :LNOT: colourmoreborder
         BL      forcetint_off
       ]
@@ -8517,7 +8522,8 @@ novscroll
         BL      forcetint_on
       ]
         TEQ     R4,#0
-        LDRNE   R2,[R4,#tool_blank]     ; blank splot type tool icon thingi?
+        LDRNE   R14,tool_list
+        LDRNE   R2,[R14,#tool_blank]    ; blank splot type tool icon thingi?
         TEQNE   R2,#0
         BLNE    draw_spriteglyph        ; plot the sprite if thats present
         LDREQ   R1,=sysicon
