@@ -7627,30 +7627,30 @@ font_matrix
 ; This table cunningly works both as character strings and character numbers
 
 wimpsymbols
-        = "Ä", 0, 0, 0
-        = "Ñ", 0, 0, 0
-        = "à", 0, 0, 0
-        = "â", 0, 0, 0
-        = "ä", 0, 0, 0
-        = "ã", 0, 0, 0
+        DCD     &00000080       ; tick/euro
+        DCD     &00000084       ; cross
+        DCD     &00000088       ; left arrow
+        DCD     &00000089       ; right arrow
+        DCD     &0000008A       ; down arrow
+        DCD     &0000008B       ; up arrow
 
 ; The next two tables *must* be kept in the same order!
 
 wimpsymbols_UTF8
-        = "‚úî", 0  ; Ä
-        = "‚úò", 0  ; Ñ
-        = "‚áê", 0  ; à
-        = "‚áí", 0  ; â
-        = "‚áì", 0  ; ä
-        = "‚áë", 0  ; ã
+        DCD     &00949CE2       ; tick/euro
+        DCD     &00989CE2       ; cross
+        DCD     &009087E2       ; left arrow
+        DCD     &009287E2       ; right arrow
+        DCD     &009387E2       ; down arrow
+        DCD     &009187E2       ; up arrow
 
 wimpsymbols_UCS4
-        & &2714     ; Ä
-        & &2718     ; Ñ
-        & &21D0     ; à
-        & &21D2     ; â
-        & &21D3     ; ä
-        & &21D1     ; ã
+        DCD     &00002714       ; tick/euro
+        DCD     &00002718       ; cross
+        DCD     &000021D0       ; left arrow
+        DCD     &000021D2       ; right arrow
+        DCD     &000021D3       ; down arrow
+        DCD     &000021D1       ; up arrow
 
 ; Work out which characters need mapping to WimpSymbol in this font
 ; Entry: R3 = font handle

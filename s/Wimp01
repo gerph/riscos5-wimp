@@ -2336,6 +2336,7 @@ Helptable
 	Command WimpVisualFlags,255,0,International_Help
 	]
         DCB     0
+        ALIGN
 
 ;............................................................................
 
