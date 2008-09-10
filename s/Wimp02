@@ -8106,6 +8106,8 @@ have_thin_border
 
       [ TrueIcon3
         LDR     R0, truetitlefg         ; set title foreground colour
+        CMP     R0, #0                  ; is foreground colour black?
+        LDREQ   R0, truewindowoutlinecolour ; if so, get window outline colour
       |
         LDRB    R0,[handle,#w_tfcol]    ; set title foreground colour
       ]
@@ -8681,6 +8683,10 @@ nohscroll
         STRB    R14, tinted_window
       ]
 
+        LDR     R14,ThreeDFlags
+        TST     R14,#ThreeDFlags_WindowOutlineOver
+        BLNE    drawwindowoutline
+
 doneborder
       [ Autoscr
         LDR     R14, dragflags
@@ -8783,6 +8789,55 @@ blankicon       DCD     &0D
 
         LTORG
 
+
+;-------------------------------------------------------------------------------
+drawwindowoutline
+        Entry   "r0-r9"
+
+        ADD     R0,handle,#w_x0
+        LDMIA   R0,{x0,y0,x1,y1}
+;
+; draw border round work area (unless w_tfcol = 255)
+;
+      [ ChildWindows
+        LDRB    R14,[handle,#w_tfcol]
+        TEQ     R14,#255
+	BNE	have_thin_outline
+      [ TrueIcon3
+        LDR     R0, truetitlefg
+      |
+	MOV	R0,#7			; set black border in case toolsprites need it...
+      ]
+	BL	window_fg
+        B       no_thin_outline
+have_thin_outline
+      ]
+
+;        LDR     R14,dx
+;        ADD     x0,x0,R14
+;        SUB     x1,x1,R14
+;        LDR     R14,dy
+;        ADD     y0,y0,R14
+;        SUB     y1,y1,R14
+
+      [ TrueIcon3
+        LDR     R0, truetitlefg         ; set title foreground colour
+        CMP     R0, #0                  ; is foreground colour black?
+        LDREQ   R0, truewindowoutlinecolour ; if so, get window outline colour
+      |
+        LDRB    R0,[handle,#w_tfcol]    ; set title foreground colour
+      ]
+        BL      window_fg
+
+        BL      hollowrectangle
+
+      [ ChildWindows
+no_thin_outline
+      ]
+
+        EXIT
+
+;-------------------------------------------------------------------------------
 
       [ TrueIcon3
 ;
