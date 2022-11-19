@@ -5108,7 +5108,7 @@ vduinput2
 
 
 readvduvars2
-        Push    "R0-R4,LR"
+        Push    "R0-R6,LR"
 
         ADR     R0,vduinput2
         ADR     R1,vduoutput
@@ -5149,7 +5149,7 @@ readvduvars2
 
 leavereadvduvars2
         STRVS   R0,[sp]
-        Pull    "R0-R4,PC"
+        Pull    "R0-R6,PC"
 
 readvduvars
         Push    "R0,R1,LR"
