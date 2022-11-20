@@ -4030,6 +4030,7 @@ SWIWimp_SetExtent
 
 checkextent
         Push    "cx0,cy0,cx1,cy1,LR"
+        BL      checkredrawhandle               ; ensure no task switch for validation string reads
 ;
         BL      minwindowx
         Pull    "cx0,cy0,cx1,cy1,PC",VS
