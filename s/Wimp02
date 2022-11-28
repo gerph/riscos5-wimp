@@ -2591,6 +2591,11 @@ closelast
 ;
         BL      restorekeycodes
 ;
+      [ CnP
+        ADRL    R0,clipboard_taskhandle
+        MOV     R1,#clipboard_th_pending
+        STR     R1,[R0]                 ; reset state machine in case of re-entering desktop
+      ]
         LDR     R0,singletaskhandle
         LDR     R1,taskhandle
         TEQ     R0,R1

@@ -1686,6 +1686,9 @@ selecttable_lastpal # 1024              ; Last sprite palette used with selectta
               [ CnP
               ; workspace bits for running the task side of things for the clipboard
 clipboard_taskhandle  # 4 ; task handle for the front end task
+clipboard_th_pending  * 0
+clipboard_th_run      * 1
+clipboard_th_dormant  * 2 ; values >= 3 are the assigned task handle
 clipboard_pollword    # 4 ; pollword for the front end poll loop
 selection_text_origin # 4 ; text origin for current unshaded selection window (if present)
               ]
@@ -3934,7 +3937,7 @@ gotwork
         [ CnP
         BL      clipboard_create_sprite_area
         ADRL    R14,clipboard_taskhandle
-        MOV     R0,#0
+        MOV     R0,#clipboard_th_pending
         STR     R0,[R14]
         STR     R0,cnp_iconautoscr_state
         MOV     R0,#-1
@@ -4304,7 +4307,7 @@ Service2
         Push    "LR"                    ; called on Service_Reset
         [ CnP
         ADRL    R14,clipboard_taskhandle
-        MOV     R1,#0
+        MOV     R1,#clipboard_th_pending
         STR     R1,[R14]
         MOV     R1,#Service_Reset
         ]

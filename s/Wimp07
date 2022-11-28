@@ -874,15 +874,15 @@ SWIWimp_StartTask
 ;
 ; now stash the parent task on the return stack, and start up the new one
 ;
-        ADRL    R1,taskbuffer
  [ CnP
         ADRL    R14,Title ; if we're doing the clipboard task
         TEQ     R0,R14
-        MOVEQ   R14,#1
+        MOVEQ   R14,#clipboard_th_run
         ADREQL  R1,clipboard_taskhandle
         STREQ   R14,[R1]
         BEQ     %FT92
  ]
+        ADRL    R1,taskbuffer
 01
         LDRB    R14,[R0],#1
         STRB    R14,[R1],#1
@@ -955,49 +955,41 @@ SWIWimp_StartTask
 runthetask
  [ CnP
  ; r0 points to taskbuffer always
- ; get module workspace pointer
         MOV     R10,R0
         MOV     R0,#ModHandReason_LookupName
         ADRL    R1,Title
         MOV     R8,R1
-        SWI     OS_Module ; returns private word content in R4
-        MOV     R12,R4
+        SWI     OS_Module
+        MOV     R12,R4                  ; recover the Wimp's wsptr after the task swap
 
         ADRL    R6,clipboard_taskhandle
         LDR     R14,[R6]
-        CMP     R14,#1
+        CMP     R14,#clipboard_th_run
         BHI     %FT00 ; clipboard does not need init'ing, continue as normal
-        BEQ     cbtask_start ; =1 so clipboard needs running right now
+        BEQ     cbtask_start ; clipboard needs running right now
 
  ; need to do the clipboard as well as our current task
         SWI     Wimp_CloseDown ; close down the current task
 
  ; start up a new 'proper' task so we can Wimp_StartTask again
-        LDR     R0,=310
+        MOV     R0,#200
         ADRL    R1,taskidentifier4
         LDR     R1,[R1]
         MOV     R7,R1
         MOV     R2,R8
         SWI     Wimp_Initialise
 
-        MOV     R0,R8 ; call with module title to request clipboard
+        MOV     R0,R8                   ; special R0 -> module title to go to Clipboard Manager
         SWI     Wimp_StartTask
 
-        MOV     R0,R2
-        MOV     R1,R7
-        SWI     Wimp_CloseDown ; close down again
-
-        MOV     R0,R10 ; carry on where we were
-        SWI     OS_CLI
-        SWI     OS_Exit
-        ; STOP
+        MOV     R0,R1
+        MOV     R1,R7                   ; close down the temporary task
 00
         SWI     Wimp_CloseDown
 
-        MOV     R0,R10
-        SWI     OS_CLI
-        SWI     OS_Exit
-        ; STOP
+        MOV     R0,R10                  ; the originally requested command to execute
+        SWI     OS_CLI                  ; R0 --> OS_CLI command
+        SWI     OS_Exit                 ; exit back to Wimp
  |
         MOV     R1,R0                   ; close down the task !!!
         SWI     Wimp_CloseDown
