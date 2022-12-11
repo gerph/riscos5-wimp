@@ -1998,8 +1998,9 @@ cantchange
 ; obtain 'button type' of user icon
 ;
 01      CMP     R4,#nullptr
-        LDREQ   R5,[handle,#w_workflags]; look up work area button type
-        LDRNE   R5,[handle,#w_icons]
+        Abs     R14,R3
+        LDREQ   R5,[R14,#w_workflags]   ; look up work area button type
+        LDRNE   R5,[R14,#w_icons]
         ADDNE   R5,R5,#i_flags
         LDRNE   R5,[R5,R4,ASL #i_shift] ; R5 = flag word
 ;
