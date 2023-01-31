@@ -45,7 +45,7 @@ ifeq (${TARGET},ThemeDefs)
 CUSTOMSA  = custom
 CUSTOMEXP = custom
 
-install: 
+install_custom:
 	${MKDIR} ${INSTDIR}.${USERIF}
 	| Give the disc ones in preference if they exist, else minimalist ROM ones
 	IfThere LocalRes:${USERIF}.DiscSprites.Sprites   Then ${CP} LocalRes:${USERIF}.DiscSprites.Sprites   ${INSTDIR}.${USERIF}.Sprites   ${CPFLAGS} Else ${CP} LocalRes:${USERIF}.Sprites ${INSTDIR}.${USERIF}.Sprites ${CPFLAGS}
@@ -56,14 +56,21 @@ install:
 	IfThere LocalRes:${USERIF}.DiscSprites.CoSprite  Then ${CP} LocalRes:${USERIF}.DiscSprites.CoSprite  ${INSTDIR}.${USERIF}.CoSprite  ${CPFLAGS}
 	@${ECHO} ${COMPONENT}: disc theme resources installed
 
-export:
+export_libs_custom export_hdrs_custom:
 	@${ECHO} ${COMPONENT}: nothing to export when target is ${TARGET}
 endif
 
 include StdTools
 include AAsmModule
 
-resources: resources-wimp-${CMDHELP}
+# Definitions of rules for top-level phony targets are required until
+# AAsmModule is updated. After this point, the definitions in AAsmModule
+# will take precedence because they are encountered first: amu will emit a
+# warning about the definitions below, but that can safely be ignored.
+resources: resources_${CUSTOMRES}
+	@${NOP}
+
+resources_custom: resources-wimp-${CMDHELP}
 	@echo ${COMPONENT}: resource files copied
 
 resources-wimp_common:
