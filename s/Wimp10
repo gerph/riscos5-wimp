@@ -729,15 +729,6 @@ maketoollist EntryS "R1-R11"
         SUBS    R4,R4,#1
         MOVMI   R4,#0                   ; always returns an extra pixel - unhelpful!
 ;
-      [ TrueIcon3
-        ; If these are the ROM toolsprites, assume all tools are unmasked
-        LDR     R0,ROMstart
-        LDR     R14,ROMend
-        CMP     R1,R0
-        CMPHS   R14,R1
-        BHS     %FT66
-      ]
-;
         TEQ     R5,#1
         LDREQ   R5,[sp]
         ORREQ   R5,R5,#1
@@ -847,12 +838,12 @@ maketoollist EntryS "R1-R11"
         BL      freetoolarea
         EXITS
 42
+    [ fastborders
       [ Medusa
         MOV     R1, #8+32               ; Plot masked with wide tables by default
       |
         MOV     R1, #8                  ; Plot masked by default
       ]
-      [ fastborders
         LDRB    R0,tsprite_needsfactors ; do we need to do translation
         TEQ     R0,#0
         LDREQ   R0,=&200+SpriteReason_PutSpriteUserCoords
@@ -860,23 +851,37 @@ maketoollist EntryS "R1-R11"
         ADRNEL  R2,tool_scalingblk
         LDRNE   R3,tpixtable_at
         MOVEQ   R3,#0
-      |
-        LDR     R0,=&200+SpriteReason_PutSpriteScaled
-      [ TrueIcon3
-        LDR     R14, tool_area
-        LDR     R2, ROMstart
-        LDR     R3, ROMend
-        CMP     R14, R2
-        CMPHS   R3, R14
+    |
+;
+; to work out the tool plot op, run through the cached tool list to see if any
+; are masked, skipping over the title bar top/bottom as a special case per
+; dofunkytitlebar which will be plotted masked assessed on a per sprite basis
+; (this is a speed optimisation/flicker reduction so that we don't fill with
+; background colour only to then plot over the top with a solid sprite).
+;
+        LDR     R2,tool_list
+        LDR     R3,=toolcachesize       ; -> list / size
+        MOV     R14,#0
       [ Medusa
-        MOVHS   R1, #0+32               ; pretend ROM toolsprites are unmasked
+        MOV     R1,#0+32                ; Plot solid with wide tables by default
       |
-        MOVHS   R1, #0
+        MOV     R1,#0                   ; Plot solid by default
       ]
-      ]
+43
+        TEQ     R14,#tool_tbarmidt
+        TEQNE   R14,#tool_tbarmidb
+        LDRNE   R0,[R2,R14]
+        TSTNE   R0,#1                   ; mask status
+        ORRNE   R1,R1,#8                ; swap to plot masked
+        SUBNE   R14,R3,#4               ; exit FOR
+        ADD     R14,R14,#4
+        CMP     R14,R3
+        BNE     %BT43
+
+        LDR     R0,=&200+SpriteReason_PutSpriteScaled
         ADRL    R2,tool_scalingblk
         LDR     R3,tpixtable_at
-      ]
+    ]
 ;
         ASSERT  tool_maskop = tool_plotop+4
         ASSERT  tool_scaling = tool_maskop+4
