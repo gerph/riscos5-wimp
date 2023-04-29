@@ -3025,16 +3025,9 @@ greys_16
 ; tries "<filename>23" if hi-res mono, and/or "<filename>22" if 2x2 OS units
 
 IconSprites_Code
-        Push    "R7-R9,LR"
+        Push    "R7-R8,LR"
         LDR     wsptr,[R12]
 ;
-      [ :LNOT: Medusa
-        Push    "R0"
-        MOV     R0,#ModHandReason_RMADesc
-        SWI     XOS_Module
-        MOV     R9,R3                   ; how much free RMA there was before merging
-        Pull    "R0"
-      ]
         MOV     R8,R0                   ; R8 -> original filename
         MOV     R5,R0                   ; R5 = position at which to insert system variable
 01      LDRB    LR,[R0],#1              ; skip leading space
@@ -3159,16 +3152,16 @@ IconSprites_Code
  ]
 
       [ :LNOT: Medusa                   ; Medusa uses DA
-        MOV     R0,#1                   ; The merge might have bumped up the RMA while both sets of sprites
-        MOV     R1,#-&10000000          ; were loaded. Try and shrink RMA.
-        SWI     XOS_ChangeDynamicArea   ; -256M will give "Unable to move memory"
-        MOV     R0,#1
-        MOV     R1,R9                   ; Put back the same amount of free space as on entry
-        SWI     XOS_ChangeDynamicArea   ; May fail if APPSPACE is in use, that's ok.
+        MOV     R0,#ModHandReason_RMADesc
+        SWI     XOS_Module              ; The merge might have bumped up the RMA while both sets of sprites
+        RSBS    R1,R3,#128*1024         ; were loaded. Resize the RMA, leaving a cushion of 128k. 
+        MOVNE   R0,#1
+        SWINE   XOS_ChangeDynamicArea   ; May fail if APPSPACE is in use, that's ok.
+90
         CLRV
       ]
 95
-        Pull    "R7-R9,PC"
+        Pull    "R7-R8,PC"
 
 IconThemeSysVar = "<Wimp$IconTheme>"
 IconThemeSysVarLen * . - IconThemeSysVar
