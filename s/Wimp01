@@ -383,6 +383,7 @@ ThreeDFlags_NoIconBgInTransWindows	*	1<<5
 ThreeDFlags_NoFontBlending		*	1<<6
 ThreeDFlags_FullIconClipping		*	1<<7    ; we're just ignoring this flag
 ThreeDFlags_WindowOutlineOver           *       1<<8
+ThreeDFlags_NoIconBarBorder             *       1<<9
 
 arrowIconWidth_No3D     *       24
 arrowIconWidth_3D       *       32
@@ -2344,6 +2345,8 @@ WimpVisualFlags_Help		DCB "*WimpVisualFlags changes some aspects of the visual a
 				DCB "   Use font blending in icons.",cr
 				DCB "-WindowOutlineOver",cr
 				DCB "   Plot the window outline over the tool icons.",cr
+				DCB "-NoIconBarBorder",cr
+				DCB "   Remove the outline from the iconbar.",cr
 				DCB "-All",cr
 				DCB "   Turn all flags on.",cr
 				DCB "-WindowBorderFaceColour <&RRGGBB>",cr
@@ -7651,7 +7654,7 @@ WimpKillSprite_Code
 	DCB	"ButtonBorderFaceColour=BBFC/E,ButtonBorderShallowColour=BBSC/E,ButtonBorderOppColour=BBOC/E,"
 	DCB	"ButtonColour=BC/E,ButtonWellColour=BWC/E,ButtonHighlightColour=BHC/E,"
 	DCB	"NoFontBlending=NFB/S,FontBlending=FB/S,"
-	DCB     "WindowOutlineColour=WOC/E,WindowOutlineOver=WOO/S",0
+	DCB     "WindowOutlineColour=WOC/E,WindowOutlineOver=WOO/S,NoIconBarBorder=NIBB/S",0
 	ALIGN
 
 WimpVisualFlags_Code
@@ -7706,6 +7709,9 @@ WimpVisualFlags_Code
 	LDR	r1,[sp,#80]
 	TEQ	r1,#0
 	ORRNE	r2,r2,#ThreeDFlags_WindowOutlineOver
+	LDR	r1,[sp,#84]
+	TEQ	r1,#0
+	ORRNE	r2,r2,#ThreeDFlags_NoIconBarBorder
 
 	LDR	r1,[sp,#28]		; window border face colour
 	BL	%FT02

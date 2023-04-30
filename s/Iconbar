@@ -124,7 +124,7 @@ addtoR1
         SUBVC   R14,R14,R2
         STRVC   R14,iconbarheight       ; used later
  [ HideIconBar
-        MOV     R2, #-3
+        MOVVC   R2, #-3
  |
         LDRVC   R2,iconbarhandle        ; open at same height
  ]
@@ -321,11 +321,24 @@ openiconbar Entry   "R1-R9,R11"
         LDMIA   R14,{cx0,cy0,cx1,cy1}           ; always open iconbar at bottom
         LDR     R14,iconbarheight
         ADD     cy1,cy0,R14
+      [ ThreeDPatch
+        LDR     R14,ThreeDFlags
+        TST     R14,#ThreeDFlags_NoIconBarBorder
+        MOVNE   R14,#255                        ; no border special value
+        MOVEQ   R14,#sc_black
+        STRB    R14,[handle,#w_tfcol]           ; transfer border visual flag to window definition
+
+        MOVNE   R14,#0                          ; no left/right border allowance
+        MOVNE   R11,#0
+        LDREQ   R14,dx
+        LDREQ   R11,dy
+      |
         LDR     R14,dx
+        LDR     R11,dy
+      ]
         ADD     cx0,cx0,R14
         SUB     cx1,cx1,R14
-        LDR     R14,dy
-        ADD     cy0,cy0,R14                     ; cx0,cy0,cx1,cy1 = screen posn
+        ADD     cy0,cy0,R11                     ; cx0,cy0,cx1,cy1 = screen posn
         LDR     x0,[handle,#w_wex0]             ; try to keep extent the same
         SUB     x1,cx1,cx0
         ADD     x1,x0,x1                        ; x0,x1 = extent
