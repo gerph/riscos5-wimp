@@ -9,12 +9,12 @@
                         GBLS    Module_ApplicationDate
                         GBLS    Module_HelpVersion
                         GBLS    Module_ComponentName
-Module_MajorVersion     SETS    "5.85"
-Module_Version          SETA    585
+Module_MajorVersion     SETS    "5.86"
+Module_Version          SETA    586
 Module_MinorVersion     SETS    ""
-Module_Date             SETS    "14 Jan 2023"
-Module_ApplicationDate  SETS    "14-Jan-23"
+Module_Date             SETS    "24 Jun 2023"
+Module_ApplicationDate  SETS    "24-Jun-23"
 Module_ComponentName    SETS    "Wimp"
-Module_FullVersion      SETS    "5.85"
-Module_HelpVersion      SETS    "5.85 (14 Jan 2023)"
+Module_FullVersion      SETS    "5.86"
+Module_HelpVersion      SETS    "5.86 (24 Jun 2023)"
                         END
