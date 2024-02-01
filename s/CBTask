@@ -499,7 +499,7 @@ cbtask_pastedata
         ; send message_datarequest to see who has any data for us
         ADD     R9,R11,#cbtask_pollblock
 
-        MOV     R0,#44
+        MOV     R0,#48
         MOV     R1,#0
         MOV     R2,#0
         MOV     R3,#0
