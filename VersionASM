@@ -12,9 +12,9 @@
 Module_MajorVersion     SETS    "5.87"
 Module_Version          SETA    587
 Module_MinorVersion     SETS    ""
-Module_Date             SETS    "25 Mar 2024"
-Module_ApplicationDate  SETS    "25-Mar-24"
+Module_Date             SETS    "22 Apr 2024"
+Module_ApplicationDate  SETS    "22-Apr-24"
 Module_ComponentName    SETS    "Wimp"
 Module_FullVersion      SETS    "5.87"
-Module_HelpVersion      SETS    "5.87 (25 Mar 2024)"
+Module_HelpVersion      SETS    "5.87 (22 Apr 2024)"
                         END

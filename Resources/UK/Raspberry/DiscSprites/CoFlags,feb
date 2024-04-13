@@ -1,2 +1,2 @@
 | Instruct the configure plugin how to augment the Raspberry theme
-WimpVisualFlags -WindowOutlineOver -WOC &505258
+WimpVisualFlags -WindowOutlineOver -WOC &505258 -BWC &F8E2A4
