@@ -3,3 +3,9 @@ s/** gitlab-language=armasm linguist-language=armasm linguist-detectable=true
 **/s/** gitlab-language=armasm linguist-language=armasm linguist-detectable=true
 *,ffb gitlab-language=bbcbasic linguist-language=bbcbasic linguist-detectable=true
 **/c/** gitlab-language=c linguist-language=c linguist-detectable=true
+**/c/* gitlab-language=c linguist-language=c
+**/s/* gitlab-language=armasm linguist-language=assembly
+*,fe1 gitlab-language=make linguist-language=makefile
+VersionNum gitlab-language=c linguist-language=c
+hdr/* gitlab-language=armasm linguist-language=assembly
+s/* gitlab-language=armasm linguist-language=assembly
