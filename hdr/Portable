@@ -1,0 +1,54 @@
+SWIClass        SETS    PortableSWI_Name
+
+        ^       PortableSWI_Base
+
+        AddSWI  Speed                   ; &42FC0
+        AddSWI  Control                 ; &42FC1
+        AddSWI  ReadBMUVariable         ; &42FC2
+        AddSWI  WriteBMUVariable        ; &42FC3
+        AddSWI  CommandBMU              ; &42FC4
+
+PortableSWICheckValue * @               ;RCM says: this line in wrong place, but leave it here for now!
+        AddSWI  ReadFeatures            ; &42FC5
+        AddSWI  Idle                    ; &42FC6
+        AddSWI  Stop                    ; &42FC7
+        AddSWI  Status                  ; &42FC8
+
+PortableControl_EconetEnable    *       1 :SHL: 0
+PortableControl_LCDEnable       *       1 :SHL: 1
+PortableControl_VideoEnable     *       1 :SHL: 2
+PortableControl_SerialEnable    *       1 :SHL: 3       ; enable serial buffers and oscillator
+
+PortableControl_DualEnable      *       1 :SHL: 4
+PortableControl_ClockBits       *       3 :SHL: 5       ; control which clock is fed to VIDC
+PortableControl_ExtClock        *       0 :SHL: 5       ; use external clock (from IOEB)
+PortableControl_Crys2Clock      *       1 :SHL: 5       ; use crystal clock divided by 2
+PortableControl_CrysClock       *       2 :SHL: 5       ; use crystal clock
+PortableControl_InvertClock     *       1 :SHL: 7
+
+PortableControl_BacklightEnable *       1 :SHL: 8
+
+PortableControl_ExtraLines      *       1 :SHL: 9
+PortableControl_ExtraLines1     *       0 :SHL: 9
+PortableControl_ExtraLines2     *       1 :SHL: 9
+
+PortableControl_DRAMs           *       1 :SHL: 10
+PortableControl_DRAMs1          *       0 :SHL: 10
+PortableControl_DRAMs2          *       1 :SHL: 10
+
+PortableControl_SoundEnable     *       1 :SHL: 11      ; enable filters and amplifiers (new for Stork)
+PortableControl_PCMCIAEnable    *       1 :SHL: 12      ; enable PCMCIA hardware (new for Stork)
+PortableControl_ParallelEnable  *       1 :SHL: 13      ; enable parallel port (new for Stork)
+PortableControl_FDCEnable       *       1 :SHL: 14      ; enable FDC oscillator
+PortableControl_IDEEnable       *       1 :SHL: 15      ; enable IDE hard disc (new for Stork)
+
+PortableControl_LCDInvert       *       1 :SHL: 16
+PortableControl_IntTBallEnable  *       1 :SHL: 17      ;internal trackerball enabled } mutually
+PortableControl_ExtMouseEnable  *       1 :SHL: 18      ;external mouse port enabled  } exclusive
+PortableControl_ExtPowerEnable  *       1 :SHL: 19      ;power to external keyboard and mouse
+
+PortableFeature_Speed           *       1 :SHL: 0
+PortableFeature_Idle            *       1 :SHL: 4
+PortableFeature_Stop            *       1 :SHL: 5
+
+    END

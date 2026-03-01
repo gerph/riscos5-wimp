@@ -48,7 +48,15 @@ Module_BaseAddr
         GET     Hdr:FileTypes
         GET     Hdr:Hourglass
         GET     Hdr:ResourceFS
-        GET     Hdr:Portable
+
+        GBLS    GET_PORTABLE
+    [ ROOLSource
+GET_PORTABLE SETS "GET     Hdr:Portable"
+    |
+GET_PORTABLE SETS "GET     Hdr.Portable"
+    ]
+        $GET_PORTABLE
+
         GET     Hdr:MsgTrans
         GET     hdr:ColourTran
         GET     hdr:FPEmulator
@@ -56,13 +64,47 @@ Module_BaseAddr
         GET     hdr:Switcher
         GET     hdr:PDriver
         GET     hdr:ScrBlank
-        GET     hdr:OsBytes
-        GET     hdr:OsWords
+
+        GBLS    GET_OSBYTES
+        GBLS    GET_OSWORDS
+    [ ROOLSource
+GET_OSBYTES SETS "GET     hdr:OsBytes"
+GET_OSWORDS SETS "GET     hdr:OsWords"
+    |
+GET_OSBYTES SETS "GET     hdr.OsBytes"
+GET_OSWORDS SETS "GET     hdr.OsWords"
+    ]
+        $GET_OSBYTES
+        $GET_OSWORDS
+
         GET     hdr:Countries
-        GET     hdr:Internatio
-        GET     hdr:VFPSupport
-        GET     hdr:OSRSI6
-        GET     hdr:OSMem
+;        GET     hdr:Internatio
+
+        GBLS    GET_VFPSUPPORT
+    [ ROOLSource
+GET_VFPSUPPORT SETS "GET     hdr:VFPSupport"
+    |
+GET_VFPSUPPORT SETS "GET     hdr.VFPSupport"
+    ]
+        $GET_VFPSUPPORT
+
+
+        GBLS    GET_OSRSI6
+    [ ROOLSource
+GET_OSRSI6 SETS "GET     hdr:OSRSI6"
+    |
+GET_OSRSI6 SETS "GET     hdr.OSRSI6"
+    ]
+        $GET_OSRSI6
+
+        GBLS    GET_OSMEM
+    [ ROOLSource
+GET_OSMEM SETS "GET     hdr:OSMem"
+    |
+GET_OSMEM SETS "GET     Hdr:DynArea"
+    ]
+        $GET_OSMEM
+;        GET     hdr:OSMem
 
         GET     VersionASM
 

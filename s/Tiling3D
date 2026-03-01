@@ -29,10 +29,10 @@
 $lab    DivRemS $ra,$rb,$rc,$tmp
 $lab    CMP     $rb,#0
         BLT     %FT2
-        DivRem  $ra,$rb,$rc,$tmp
+        DivRemNew  $ra,$rb,$rc,$tmp
         B       %FT4
 2       RSB     $rb,$rb,#0
-        DivRem  $ra,$rb,$rc,$tmp
+        DivRemNew  $ra,$rb,$rc,$tmp
         RSB     $rb,$rb,#0
         ; modulus should be -ve if divisor is -ve
 4

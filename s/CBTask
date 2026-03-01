@@ -2368,3 +2368,5 @@ cbtask_check_abort_drag
         STR     R0,[R14]
         Pull    "R0,PC"
  ]
+
+        END

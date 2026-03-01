@@ -1,0 +1,195 @@
+
+        GBLS    Options
+Options SETS    ""
+
+        GBLS    UserIF
+Options SETS    "Gerph"
+
+        GBLL    NoARMVE
+NoARMVE SETL    {TRUE}
+
+        MACRO
+$label  ASCII_UpperCase $r1, $r2
+$label  UpperCase $r1, $r2
+        MEND
+
+        MACRO
+$label  ASCII_LowerCase $r1, $r2
+$label  LowerCase $r1, $r2
+        MEND
+
+        GET     Hdr:OSScreenMode
+
+ModuleFlag_32bit * ModFlags_Is32bitSafe
+ScreenModeReason_ModeStringToSpecifier * ScreenModeReason_DecodeModeString
+Legacy_IRQsema  * &108
+Legacy_DomainId * &FF8
+DAReason_ReturnFreePages * 27
+
+
+WimpTextSelection_Enabled       *       1:SHL:0         ; Wimp CnP in writeables
+WimpTextSelection_EffectNOP     *       0
+WimpTextSelection_EffectDelete  *       1
+WimpTextSelection_EffectClear   *       2
+WimpTextSelection_EffectCut     *       3
+WimpTextSelection_EffectMask    *       2_11            ; 2 bits to describe the effect
+WimpTextSelection_InsertEffectShift *   1               ; Insert key and synonyms
+WimpTextSelection_DeleteEffectShift *   3               ; Delete key and synonyms
+WimpTextSelection_MoveEffectShift   *   5               ; Caret moved with cursors
+WimpTextSelection_AutoSelectEnabled *   1:SHL:7         ; Text is auto-selected when caret enters
+
+ModeFlag_NonGraphic * Flag_NonGraphic
+ModeFlag_GreyscalePalette * Flag_GreyPalette
+
+
+; Mode selector format
+
+                        ^       0
+ModeSelector_Flags      #       4       ; flags word
+ModeSelector_XRes       #       4       ; x-resolution in pixels
+ModeSelector_YRes       #       4       ; y-resolution in pixels
+ModeSelector_PixelDepth #       4       ; pixel depth (=Log2BPP)
+ModeSelector_FrameRate  #       4       ; nominal frame rate (in Hz)
+ModeSelector_ModeVars   #       0       ; start of pairs of (mode var index, value)
+
+ModeSelectorFlags_FormatMask    *       &FF
+ModeSelectorFlags_ValidFormat   *       1
+
+ModeSelector_MaxSize    *       ModeSelector_ModeVars+(NumModeVars * 8)+4
+                                        ; maximum size of a mode selector, with each mode variable overridden
+                                        ; plus terminator on end
+
+ModeFlag_64k                 * Flag_FullPalette ; Used with log2bpp==4 to indicate 565 RGB/BGR mode
+ModeFlag_FullPalette         * Flag_FullPalette
+ModeFlag_DataFormat_Mask     * &F:SHL:12
+ModeFlag_DataFormatFamily_Mask * 3:SHL:12 ; 0=RGB, 1=misc (CMYK), 2=YCbCr, 3=reserved
+ModeFlag_DataFormatFamily_RGB   * 0:SHL:12
+ModeFlag_DataFormatFamily_Misc  * 1:SHL:12
+ModeFlag_DataFormatFamily_YCbCr * 2:SHL:12
+ModeFlag_DataFormatSub_Mask  * &C:SHL:12  ; RGB: b14 = RGB order (0=&ABGR, 1=&ARGB)
+                                          ;      b15 = alpha mode (0=transfer/supremacy, 1=alpha)
+                                          ; misc: 2_00 = &KYMC
+                                          ; YCbCr: b14 = range (0=full, 1=video)
+                                          ;        b15 = standard (0=ITU-R BT.601, 1=ITU-R BT.709)
+ModeFlag_DataFormatSub_RGB   * 4:SHL:12   ; 0=&xBGR, 1=&xRGB
+ModeFlag_DataFormatSub_Alpha * 8:SHL:12   ; 0=transfer/supremacy, 1=alpha
+ModeFlag_DataFormatSub_Video * 4:SHL:12   ; 0=full range, 1=video range
+ModeFlag_DataFormatSub_709   * 8:SHL:12   ; 0=ITU-R BT.601, 1=ITU-R BT.709
+ModeFlag_Transform_Mask      * 7:SHL:16
+ModeFlag_Transform_Rotate90  * 1:SHL:16
+ModeFlag_Transform_Rotate180 * 2:SHL:16
+ModeFlag_Transform_VFlip     * 4:SHL:16
+
+                                ^   20 ; was: ms_data
+msDataRequest_windowhandle      #   4
+msDataRequest_internalhandle    #   4  ; or icon handle
+msDataRequest_x                 #   4
+msDataRequest_y                 #   4
+msDataRequest_flags             #   4
+msDataRequest_filetypes         #   4  ; list terminated by -1
+msDataRequest_filetypes_end     *   -1
+
+
+                                ^   20 ; was: ms_data
+msDragging_windowhandle         #   4
+msDragging_iconhandle           #   4
+msDragging_x                    #   4
+msDragging_y                    #   4
+msDragging_flags                #   4
+msDragging_flags_fromselection  *   2_00010
+msDragging_flags_fromclipboard  *   2_00100
+msDragging_flags_deletesource   *   2_01000
+msDragging_flags_dragaborting   *   2_10000
+msDragging_bbox_x0              #   4
+msDragging_bbox_y0              #   4
+msDragging_bbox_x1              #   4
+msDragging_bbox_y1              #   4
+msDragging_filetypes            #   4 ; list terminated by -1
+msDragging_filetypes_end        *   -1
+
+                                ^   20 ; was: ms_data
+msDragClaim_flags               #   4
+msDragClaim_flags_otherptrshape *   2_0001
+msDragClaim_flags_removedragbox *   2_0010
+msDragClaim_flags_trashcan      *   2_1000
+msDragClaim_filetypes           #   4 ; list terminated by -1
+msDragClaim_filetypes_end       *   -1
+
+                        ^   20 ; was: ms_data
+msClaimEntity_flags     #   4
+
+
+                        ^   20 ; was: ms_data
+msRAMFetch_buffer       #   4
+msRAMFetch_length       #   4
+
+                        ^   20 ; was: ms_data
+msRAMTransmit_buffer    #   4
+msRAMTransmit_length    #   4
+
+Message_DataRequest     * 16  ;  call Message_DataSave on receipt of one of these
+
+
+
+WimpExtend_SpriteSuffix         * 13 ; Wimp 4.85 onwards
+WimpExtend_GetValidationString  * 14 ; Wimp 5.64 onwards
+WimpExtend_ReadSlotSize         * 15 ; Wimp 5.67 onwards
+WimpExtend_MAX * 16
+
+WimpExtend_SpriteSuffix_ROL     *       257             ; ROOL Wimp 5.35 onwards
+WimpExtend_SpriteColourmap_ROL  *       258             ; ROOL unimplemented
+
+ErrorNumber_Sprite_Bad2ndPtr * ErrorNumber_Sprite_Crap2ndPtr
+
+Service_WimpToolSpritesChanged * Service_WimpToolSpritesMoved
+
+Inter_UCSTable          * 8
+Inter_ISO3166Alpha2     * 9
+
+
+
+; **********************************************************
+; ***  DivRemNew - Unsigned integer division and remainder  ***
+; ***  rc := ra DIV rb; ra := ra REM rb                  ***
+; ***  rb preserved, rtemp corrupt                       ***
+; ***  omits remainder (-> ra corrupt) if "$norem" <> "" ***
+; ***  rb can be a constant if it starts with '#'        ***
+; **********************************************************
+        MACRO
+$label  DivRemNew  $rc, $ra, $rb, $rtemp, $norem
+$label
+     [ NoARMVE
+        MOV     $rtemp, $rb
+        CMP     $rtemp, $ra, LSR #1
+01
+        MOVLS   $rtemp, $rtemp, LSL #1
+        CMPLS   $rtemp, $ra, LSR #1
+        BLS     %BT01
+        MOV     $rc, #0
+02
+        CMP     $ra, $rtemp
+        SUBCS   $ra, $ra, $rtemp
+        ADC     $rc, $rc, $rc
+        MOV     $rtemp, $rtemp, LSR #1
+        CMP     $rtemp, $rb
+        BCS     %BT02
+     |
+      [ ("$rb" :LEFT: 1) = "#"
+        MOV     $rtemp, $rb
+        UDIV    $rc, $ra, $rtemp
+       [ "$norem" = ""
+        MLS     $ra, $rtemp, $rc, $ra
+       ]
+      |
+        UDIV    $rc, $ra, $rb
+       [ "$norem" = ""
+        MLS     $ra, $rb, $rc, $ra
+       ]
+      ]
+     ]
+        MEND
+
+
+        GET     s.Wimp
+
+        END

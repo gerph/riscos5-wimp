@@ -1161,7 +1161,7 @@ $lab    SetConfig $string, $unit, $cmosbyte, $cmosbit, $cmossize, $shift, $eor, 
         MOVLS   R3, R2
         MOVLS   R4, #0
         BLS     %FT07
-        DivRem  R3, R2, #10, R0, norem   ; R3 = R2 DIV 10
+        DivRemNew  R3, R2, #10, R0, norem   ; R3 = R2 DIV 10
         CMP     R3, #((1 :SHL: $cmossize) - 1) / 10 ; do we need to round down to 15?
         MOVEQ   R3, #(1 :SHL: $cmossize) - 1
         MOVEQ   R4, #0
@@ -9633,7 +9633,7 @@ muldivR0
 ;
         MUL     x0,R0,cx0
         ADD     x0,x0,cx1,ASR #1        ; round to nearest
-        DivRem  R0,x0,cx1,R14,norem
+        DivRemNew  R0,x0,cx1,R14,norem
 ;
         Pull    "R1,cx0,cx1,x0,PC"
 

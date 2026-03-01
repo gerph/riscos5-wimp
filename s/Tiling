@@ -20,13 +20,13 @@
 ; this is a 'signed' division macro
 
         MACRO
-$lab    DivRemS $ra,$rb,$rc,$tmp
+$lab    DivRemNewS $ra,$rb,$rc,$tmp
 $lab    CMP     $rb,#0
         BLT     %FT2
-        DivRem  $ra,$rb,$rc,$tmp
+        DivRemNew  $ra,$rb,$rc,$tmp
         B       %FT4
 2       RSB     $rb,$rb,#0
-        DivRem  $ra,$rb,$rc,$tmp
+        DivRemNew  $ra,$rb,$rc,$tmp
         RSB     $rb,$rb,#0
         ; modulus should be -ve if divisor is -ve
 4
@@ -153,10 +153,10 @@ plotspritebackground
         LDR     y1,[handle,#w_way1]
         LDR     x0,[handle,#w_wax0]
         LDR     R0,[handle,#w_scx]
-        DivRemS x1,R0,R3,R5             ; need to start 1 sprite left/below origin
+        DivRemNewS x1,R0,R3,R5             ; need to start 1 sprite left/below origin
         SUB     x0,x0,R0
         LDR     R0,[handle,#w_scy]
-        DivRemS x1,R0,R4,R5
+        DivRemNewS x1,R0,R4,R5
         LDR     R4,[sp,#4]
         SUB     y1,y1,R0
 

@@ -6616,7 +6616,7 @@ intopmenu
         BMI     notinamenu
 
         MOV     R1,R5
-        DivRem  R0,R1,#3,R14,norem      ; get (icon/3)
+        DivRemNew  R0,R1,#3,R14,norem      ; get (icon/3)
         BLVC    trymenuhighlight        ; R0 = selection index, R14=0 => shaded
         BVS     exitscanmenu            ; only re-highlighted if different
 
@@ -6958,7 +6958,7 @@ leavescan
 
 crmenuselection
         MOV     R1,R4
-        DivRem  R0,R1,#3,R14,norem      ; R0 = R4 (icon) / 3
+        DivRemNew  R0,R1,#3,R14,norem      ; R0 = R4 (icon) / 3
         BVS     longjumpexit
         LDR     R1,whichmenu
         ADRL    R14,menuselections
@@ -7049,7 +7049,7 @@ SWIWimp_GetMenuState
         CMP     R3,#0
         MOVLT   R5,#-1                  ; system icon => no selection
         BLT     %FT01
-        DivRem  R5,R3,#3,R14,norem      ; R5 = menu selection index of icon
+        DivRemNew  R5,R3,#3,R14,norem      ; R5 = menu selection index of icon
 01
 
 ; scan list of menus until the specified window is found

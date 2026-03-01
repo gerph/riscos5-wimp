@@ -1,0 +1,50 @@
+#!/usr/bin/env riscos-amu -f
+# Makefile for Wimp
+#
+
+#
+# Program specific options:
+#
+COMPONENT  = Wimp
+
+# Specifies additional targets for startup
+#INITTARGET = inittarget
+
+# Specifies additional targets for clean
+#CLEANTARGET = cleantarget
+
+# Files to export as part of export_hdr or export_libs
+# To export to the standard Hdr: path, you might use an export like:
+#   ${EXP_HDR}.${COMPONENT}
+EXPORTS    = ${EXP_HDR}.${COMPONENT}
+
+# Resources you want to be exported as part of the 'resources' phase of the build
+#RESOURCES  = ${RESDIR}.${COMPONENT}.Messages
+
+# Space separated list of libraries to link against
+LIBS       =
+
+# C source files which should be converted to assembler
+#CSOURCES   =
+# DEFINES      = definitions for C source files
+#DEFINES    =
+
+
+OPTS 		= -ROOLSource
+
+# Objects to build, using the format o.<name> (will be varied for build type)
+OBJS       = o.WimpCompat
+
+
+include AsmModule
+
+# Export rules
+# For any files you export with EXPORTS you may need to include an
+# export rule
+# To export bare files you can use the ${CP} command:
+${EXP_HDR}.${COMPONENT}: hdr.${COMPONENT}
+       ${CP} $?  $@  ${CPFLAGS}
+
+
+#---------------------------------------------------------------------------
+# Dynamic dependencies:

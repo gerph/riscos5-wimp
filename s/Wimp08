@@ -129,7 +129,7 @@ SWIWimp_SlotSize  ROUT
         BEQ     %FT01
         ADD     R2,R2,R0                ; R2 = (R2+size-1) DIV size * size
         SUB     R2,R2,#1
-        DivRem  R3,R2,R0, R14
+        DivRemNew  R3,R2,R0, R14
         STR     R3,slotsize             ; [slotsize] = no of pages
 01
         LDR     R2,orig_applicationspacesize
@@ -455,7 +455,7 @@ growapp
         MOVGT   R4,R3                   ; max amount moveable
 ;
         LDR     R0,pagesize
-        DivRem  R5,R4,R0, R14           ; R5 = number of pages to move
+        DivRemNew  R5,R4,R0, R14           ; R5 = number of pages to move
         MOV     R3,R1                   ; R3 = size of slot so far
         BL      mapfromfreepool         ; on exit R1 = memory transferred
 ;
@@ -1382,7 +1382,7 @@ nomemoryinslot2
         MOV     R1,R14
 
 ; R1 is actual allocation
-        DivRem  R4,R1,R3,R14
+        DivRemNew  R4,R1,R3,R14
         ADD     R4,R4,R4, LSL #1        ; x3
         MOV     R4,R4, LSL #2           ; x4
         ADD     R3,R4,#4

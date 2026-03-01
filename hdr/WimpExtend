@@ -1,0 +1,25 @@
+; Extend reason codes
+                                ^       6               ; earlier codes are internal use only
+WimpExtend_Parent               #       1
+WimpExtend_FrontChild           #       1
+WimpExtend_BackChild            #       1
+WimpExtend_SiblingAbove         #       1
+WimpExtend_SiblingBehind        #       1
+WimpExtend_GetBorderInfo        #       1               ; Wimp 3.99 onwards
+WimpExtend_SuspendPointer       #       1
+WimpExtend_SpriteSuffix         #       1               ; 13 Wimp 4.85 onwards
+WimpExtend_GetValidationString  #       1               ; 14 Wimp 5.64 onwards
+WimpExtend_MAXlo                #       0
+
+
+; these are our 'private' ones, moved to a separate chunk so that they
+; don't clash with whatever crap Castle are doing and not telling us about
+                                ^       256
+WimpExtend_MINhi                #       0
+WimpExtend_GetSpriteAddress     #       1               ; 256
+WimpExtend_SuffixFilename       #       1               ; 257
+WimpExtend_GetColourTranslation #       1               ; 258
+WimpExtend_MAXhi                #       0
+
+
+      END

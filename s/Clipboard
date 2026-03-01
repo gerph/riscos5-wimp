@@ -222,7 +222,7 @@ clipboard_draw_selection_block_font
         Pull    "R1-R9,PC",VS
 
         ; we want OS units, not millipoints :(
-        DivRem  R0,R3,#400,R2,norem
+        DivRemNew  R0,R3,#400,R2,norem
 
         LDR     R14,writeabledir
         TEQ     R14,#0
@@ -247,7 +247,7 @@ clipboard_draw_selection_block_font
         Pull    "R1-R9,PC",VS
 
         ; convert to OS
-        DivRem  R0,R3,#400,R2,norem
+        DivRemNew  R0,R3,#400,R2,norem
         LDR     R14,writeabledir
         TEQ     R14,#0
         RSBNE   R0,R0,#12
@@ -760,7 +760,7 @@ clipboard_flex_create_block
         ; find the end of the heap
         MOV     R3,#0
         LDR     R1,clipboard_spritearea_addr
-        ADD     R1,R1,clipboard_flex_base
+        ADD     R1,R1,#clipboard_flex_base
 01
         LDR     R2,[R1,#clipboard_flex_next_offset]
         TEQ     R2,#0                   ; end of the heap?
@@ -786,7 +786,7 @@ clipboard_flex_create_block
       |
         ; RMA version
         LDR     R1,clipboard_spritearea_addr
-        ADD     R1,R1,clipboard_flex_base
+        ADD     R1,R1,#clipboard_flex_base
         SUB     R3,R8,#1
         ADD     R1,R1,R3,LSL #3
         MOV     R14,#0
@@ -803,7 +803,7 @@ clipboard_flex_get_block_addr
 
       [ UseDynamicArea
         LDR     R1,clipboard_spritearea_addr
-        ADD     R1,R1,clipboard_flex_base
+        ADD     R1,R1,#clipboard_flex_base
 
         TEQ     R0,#0
         BEQ     %FT02
@@ -823,7 +823,7 @@ clipboard_flex_get_block_addr
       |
         ; RMA version
         LDR     R1,clipboard_spritearea_addr
-        ADD     R1,R1,clipboard_flex_base
+        ADD     R1,R1,#clipboard_flex_base
         LDR     R0,[R1,R0,LSL #3]            ; get RMA block address
 
         Pull    "R1,R2,PC"              ; return data address
@@ -836,7 +836,7 @@ clipboard_flex_get_block_size
 
       [ UseDynamicArea
         LDR     R1,clipboard_spritearea_addr
-        ADD     R1,R1,clipboard_flex_base
+        ADD     R1,R1,#clipboard_flex_base
 
         TEQ     R0,#0
         BEQ     %FT02
@@ -856,7 +856,7 @@ clipboard_flex_get_block_size
       |
         ; RMA version
         LDR     R1,clipboard_spritearea_addr
-        ADD     R1,R1,clipboard_flex_base
+        ADD     R1,R1,#clipboard_flex_base
         ADD     R1,R1,R0,LSL #3
         LDR     R0,[R1,#clipboard_flex_block_length]            ; get RMA block address
 
@@ -874,7 +874,7 @@ clipboard_flex_get_block_addr_size
 
       [ UseDynamicArea
         LDR     R1,clipboard_spritearea_addr
-        ADD     R1,R1,clipboard_flex_base
+        ADD     R1,R1,#clipboard_flex_base
 
         TEQ     R0,#0
         BEQ     %FT02
@@ -896,7 +896,7 @@ clipboard_flex_get_block_addr_size
       |
         ; RMA version
         LDR     R1,clipboard_spritearea_addr
-        ADD     R1,R1,clipboard_flex_base
+        ADD     R1,R1,#clipboard_flex_base
         ADD     R2,R1,R0,LSL #3
         LDMIA   R2,{R0,R1} ; get addr, length
 
@@ -1011,7 +1011,7 @@ clipboard_flex_set_block_size
       |
         ; RMA version
         LDR     R11,clipboard_spritearea_addr
-        ADD     R11,R11,clipboard_flex_base
+        ADD     R11,R11,#clipboard_flex_base
         ADD     R11,R11,R0,LSL #3
 
         LDMIA   R11,{R8,R9} ; get current addr,length
