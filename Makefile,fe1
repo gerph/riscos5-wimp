@@ -25,12 +25,21 @@ EXPORTS    = ${EXP_HDR}.${COMPONENT}
 LIBS       =
 
 # C source files which should be converted to assembler
-#CSOURCES   =
+CSOURCES = c.templates \
+		   c.bufferdata \
+		   c.ctrlstring \
+		   c.wildcard \
+		   c.swis_template
 # DEFINES      = definitions for C source files
-#DEFINES    =
+DEFINES    = -DNO_FORTIFY -DIN_ASM_WIMP
 
+# Get rid of the area definitions
+EXTRACSEDFLAGS = s/AREA/IGNORE/;s/IMPORT/IGNORE/
 
-OPTS 		= -ROOLSource
+# Includes in the C files
+INCLUDES    = riscos-wimp-templates.
+
+OPTS 		= -ROOLSource +CTemplates
 
 # Objects to build, using the format o.<name> (will be varied for build type)
 OBJS       = o.WimpCompat

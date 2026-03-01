@@ -1,0 +1,243 @@
+
+; /*************************************************** Gerph *********
+;  Function:     strcpy
+;  Description:  Copy a string
+;  Parameters:   dest-> where to store string
+;                src-> where to copy from
+;  Returns:      dest
+;  ******************************************************************/
+; char *strcpy(char *dest, const char *src);
+strcpy SIGNATURE
+        MOV     r2, r0
+10      LDRB    r3, [r1], #1           ; Copy from *r2++
+        TEQ     r3, #0                 ; 0 terminates
+        STRB    r3, [r2], #1           ; Copy to *r1++
+        BNE     %BT10
+        MOV     pc,lr
+
+; /*************************************************** Gerph *********
+;  Function:     strncpy
+;  Description:  Copy a string, with a limit
+;  Parameters:   dest-> where to store string
+;                src-> where to copy from
+;                n = max chars
+;  Returns:      dest
+;  ******************************************************************/
+; char *strncpy(char *dest, const char *src, int n);
+strncpy SIGNATURE
+        Entry   "r4"
+        MOVS    r4, r2
+        BEQ     %FT90
+        MOV     r2, r0
+10      LDRB    r3, [r1], #1           ; Copy from *r2++
+        SUBS    r4, r4, #1
+        MOVEQ   r3, #0
+        TEQ     r3, #0                 ; 0 terminates
+        STRB    r3, [r2], #1           ; Copy to *r1++
+        BNE     %BT10
+        EXIT
+
+
+; /*************************************************** Gerph *********
+;  Function:     strlen
+;  Description:  Find the length of a string
+;  Parameters:   str-> where to store string
+;  Returns:      length of the string
+;  ******************************************************************/
+; char *strlen(str);
+strlen  SIGNATURE
+        MOV     r2, #0
+10      LDRB    r1, [r0, r2]
+        TEQ     r1, #0
+        ADDNE   r2, r2, #1
+        BNE     %BT10
+        MOV     r0,r2
+        MOV     pc,lr
+
+; /*************************************************** Gerph *********
+;  Function:     memset
+;  Description:  Set the memory to a value
+;  Parameters:   ptr-> where to store
+;                c = character to store
+;                size = the size to store
+;  Returns:      none
+;  ******************************************************************/
+; void *memset(void *ptr, char c, int size);
+memset SIGNATURE
+        Entry
+        CMP     r2, #0
+        BEQ     %FT90
+10
+        STRB    r1, [r0], #1
+        SUBS    r2, r2, #1
+        BNE     %BT10
+90
+        EXIT
+
+
+; /*************************************************** Gerph *********
+;  Function:     memcpy
+;  Description:  Copy some memory
+;  Parameters:   dst-> where to store
+;                src-> where to copy from
+;                size = the size to store
+;  Returns:      none
+;  ******************************************************************/
+; void *memcpy(void *dst, void *src, int size);
+memcpy SIGNATURE
+        Entry
+        CMP     r2, #0
+        BEQ     %FT90
+10
+        LDRB    r14, [r1], #1
+        STRB    r14, [r0], #1
+        SUBS    r2, r2, #1
+        BNE     %BT10
+90
+        EXIT
+
+
+; /*************************************************** Gerph *********
+;  Function:     malloc
+;  Description:  Allocate temporary memory
+;  Parameters:   size = the size to allocate
+;  Returns:      pointer to memory, or NULL if failed
+;  ******************************************************************/
+; void *malloc(int size);
+malloc SIGNATURE
+        Entry
+        LDR     r12,[v6]
+        MOV     r3,r0
+        MOV     R0,#ModHandReason_Claim
+        BL      XROS_Module
+        MOVVS   r2,#0
+        MOV     r0,r2
+        EXIT
+
+
+; /*************************************************** Gerph *********
+;  Function:     calloc
+;  Description:  Allocate temporary memory, and clear
+;  Parameters:   n = number of blocks
+;                size = the size of a block
+;  Returns:      pointer to memory, or NULL if failed
+;  ******************************************************************/
+; void *calloc(int size);
+calloc SIGNATURE
+        Entry   "r4"
+        MUL     r4, r0, r1
+        MOV     r0, r4
+        BL      malloc
+        CMP     r0, #0
+        BEQ     %FT90
+
+        MOV     r1, #0
+        MOV     r2, r4
+        MOV     r4, r0
+
+        BL      memset
+
+        MOV     r0, r4
+90
+        EXIT
+
+; /*************************************************** Gerph *********
+;  Function:     free
+;  Description:  Free temporary memory
+;  Parameters:   ptr-> the memory we're freeing
+;  Returns:      none
+;  ******************************************************************/
+; void free(void *ptr);
+free SIGNATURE
+        Entry
+        LDR     r12,[v6]
+        MOVS    r2,r0
+        MOVNE   R0,#ModHandReason_Free
+        BLNE    XROS_Module
+        EXIT
+
+; FILE *fopen(const char *filename, const char *mode);
+fopen SIGNATURE
+        Entry
+        MOV     r1, r0
+        MOV     r0, #open_read :OR: open_mustopen :OR: open_nodir
+        SWI     XOS_Find
+        MOVVC   r0, #0
+        EXIT
+
+; fclose(FILE *f);
+fclose SIGNATURE
+        Entry
+        MOVS    r1, r0
+        MOVNE   r0, #0
+        SWINE   XOS_Find
+        EXIT
+
+; int fgetc(FILE *);
+fgetc SIGNATURE
+        Entry
+        SWI     XOS_BGet
+        MOVVS   r0, #-1
+        MOVCS   r0, #-1
+        EXIT
+
+; long fseek(FILE *f, long offset, int whence);
+; #define SEEK_SET 0 /* start of stream (see fseek) */
+; #define SEEK_CUR 1 /* current position in stream (see fseek) */
+; #define SEEK_END 2 /* end of stream (see fseek) */
+fseek SIGNATURE
+        Entry   "r4,r5"
+        MOV     r4, r0
+        MOV     r5, r1
+        CMP     r2, #1
+        BLT     %FT40               ; SEEK_SET (so the r1 value is correct)
+        MOVEQ   r0, #OSArgs_ReadPTR ; SEEK_CUR
+        MOVGT   r0, #OSArgs_ReadEXT ; SEEK_END
+        MOV     r1, r4
+        SWI     XOS_Args
+        ADD     r5, r5, r2          ; r5 = the position relative to CUR or END
+
+40 ; set the position
+        MOV     r0, #OSArgs_SetPTR
+        MOV     r1, r4
+        MOV     r2, r5
+        SWI     XOS_Args
+        MOVVS   r0, #-1
+        MOVVC   r0, r5
+        EXIT
+
+; long fseek(FILE *f);
+ftell SIGNATURE
+        Entry   "r4,r5"
+        MOV     r1, r0
+        MOV     r0, #OSArgs_ReadPTR ; SEEK_CUR
+        SWI     XOS_Args
+        MOVVS   r2, #-1
+        MOV     r0, r2
+        EXIT
+
+; size_t fread(void *ptr, size_t size, size_t nitems, FILE *stream);
+fread SIGNATURE
+        Entry   "r4,r5"
+        MUL     r5, r1, r2              ; size * nitems
+        MOV     r1, r3                  ; stream (file handle)
+        MOV     r2, r0                  ; destination
+        MOV     r3, r5                  ; total size to read
+        MOV     r0, #OSGBPB_ReadFromPTR
+        SWI     XOS_Args
+        MOVVS   r0, #-1
+        ; r3 = number of bytes NOT transferred
+        SUB     r0, r5, r3              ; transferred = total - not-transferred
+        EXIT
+
+
+; unsigned _kernel_udiv(unsigned divisor, unsigned dividend);
+; <= r0 = result
+;    r1 = remainder
+__rt_udiv SIGNATURE
+        DivRem  r3, r0, r1, r2
+        MOV     r1, r0
+        MOV     r0, r3
+        MOV     pc, lr
+
+        END

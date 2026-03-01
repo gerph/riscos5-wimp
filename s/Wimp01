@@ -944,6 +944,7 @@ highlighted_colour      #       4       ; colour of OK box initially
 unhighlighted_colour    #       4       ; colour of Cancel box initially
               ]
 
+
 iconbarhandle   #       4
 iconbarheight   #       4
 iconbarleft     #       icd_size
@@ -1693,6 +1694,14 @@ clipboard_th_dormant  * 2 ; values >= 3 are the assigned task handle
 clipboard_pollword    # 4 ; pollword for the front end poll loop
 selection_text_origin # 4 ; text origin for current unshaded selection window (if present)
               ]
+
+                [ CTemplates
+; Must be in the same order and size as global_t
+ctemplates_workspace            # 0
+ctemplates_modulews             # 4
+ctemplates_g_opentemplates      # 4
+ctemplates_g_currenttemplate    # 4
+                ]
 
 maxwork         *       :INDEX:@
 
@@ -3825,6 +3834,10 @@ gotwork
         MOVVC   R0,#DAReason_ReturnFreePages
         MOVVS   R0,#DAReason_ReturnFree
         STRB    R0,osdynamicarea27
+      ]
+
+      [ CTemplates
+        BL      CTemplates_Initialise
       ]
 ;
         ADRL    R14,paltable            ; initialise palette

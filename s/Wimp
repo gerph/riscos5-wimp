@@ -140,7 +140,27 @@ LoadWimpOptions SETS "GET Options.s.$Options"
         GET     Wimp03.s
         GET     Wimp04.s
         GET     Wimp05.s
+      [ CTemplates
+        GET     Wimp06c.s
+
+v7              RN      R10
+
+; Arrange to ignore spurious ObjAsm directives
+        MACRO
+        IGNORE  $a,$b,$c
+        MEND
+
+        GET     s.CUtils
+        GET     s.CSWIs
+        GET     s_c.bufferdata
+        GET     s_c.ctrlstring
+        GET     s_c.templates
+        GET     s_c.wildcard
+        GET     s_c.swis_template
+
+      |
         GET     Wimp06.s
+      ]
         GET     Iconbar.s
         GET     Wimp07.s
         GET     ProgErrs.s

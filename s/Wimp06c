@@ -1,0 +1,158 @@
+; Copyright 1996 Acorn Computers Ltd
+;
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+;
+; > s.Wimp06c
+
+;;----------------------------------------------------------------------------
+;; Template loading section
+;; This is the interface to the C code that loads the templates
+;;----------------------------------------------------------------------------
+
+
+        MACRO
+        CallCSWI $func
+        Push    "r0-r12"
+; Call C entry with r0 = SWI number (ignored)
+;                   r1 = register block
+;                   r2 = module pw
+;                   r9 = 'global_t' pointer
+        MOV     r1, sp
+        MOV     r0, #0
+        MOV     r2, r12
+        ADRL    r9, ctemplates_workspace        ; Our global_t workspace
+        BL      $func
+; Return from C, error code is in r0
+        CMP     r0, #0
+        BLNE    CErrors_decoder
+        Pull    "r0-r12"
+        MEND
+
+
+; Ensure our workspace is initialised
+CTemplates_Initialise SIGNATURE
+        Entry
+        ADRL    r0, ctemplates_workspace
+        STR     r12, [r0]
+        MOV     r1, #0
+        STR     r12, [r0, #4]
+        STR     r12, [r0, #8]
+        EXIT
+
+
+;----------------------------------------------------------------------------
+; Open template file - caches font table address and resets binding table
+; Entry:  R1 --> file name
+; Exit:   file opened (handle is held internally)
+;----------------------------------------------------------------------------
+
+SWIWimp_OpenTemplate
+
+        MyEntry "OpenTemplate"
+
+        BL      int_open_template
+        B       ExitWimp
+
+int_open_template
+        Entry
+
+        CallCSWI SWI_OpenTemplate
+
+        EXIT
+
+
+;----------------------------------------------------------------------------
+; Close template file
+;----------------------------------------------------------------------------
+
+SWIWimp_CloseTemplate ROUT
+
+        MyEntry "CloseTemplate"
+
+        BL      int_close_template
+        B       ExitWimp
+
+int_close_template
+        Entry
+
+        CallCSWI SWI_CloseTemplate
+
+        EXIT
+
+;----------------------------------------------------------------------------
+; Load template definition from file to user workspace
+; In:   R1 --> user buffer to hold window defn (userblk=R1 on entry)
+;       R2 --> free space to put 'indirected' entries
+;       R3 --> end of free space
+;       R4 --> 256-byte reference count array (for font handles)
+;       R5 --> name of entry (may be wildcarded)
+;       R6 --> first index entry to look at (0 ==> all)
+; Out:  R2 --> new free space
+;       R6 --> next index entry (0 ==> not found)
+;
+; OR (Wimp 2.45 or later):
+;
+; In:   R1 = -1
+;       R5 --> name of entry (may be wildcarded)
+;       R6 --> first index entry to look at (0 ==> all)
+; Out:  R1 = size of scratch buffer required
+;       R2 = size of indirected data
+;       R6 --> next index entry (0 ==> not found)
+;----------------------------------------------------------------------------
+
+SWIWimp_LoadTemplate
+
+        MyEntry "LoadTemplate"
+
+        BL      int_load_template
+        B       ExitWimp2               ; R1-R6 returned to user
+
+int_load_template
+        Entry
+
+        CallCSWI SWI_LoadTemplate
+
+        EXIT
+
+
+; Handle the C errors
+; All the errors used by the C code
+                        ^ 1
+err_WimpNoTemplateFile  # 1
+err_WimpNoTemplate      # 1
+err_WimpTemplateEOF     # 1
+err_WimpBadFontIndex    # 1
+err_WimpFontNotFound    # 1
+err_WimpBadFonts        # 1
+err_WimpBadTemplate     # 1
+err_WimpTooBig          # 1
+
+CErrors_decoder
+        Entry
+
+        MACRO
+        CErrors $name
+        TEQ     r0, #err_$name
+        BNE     %FT20
+        MyXError $name
+        B       %FA90
+
+        MakeErrorBlock $name
+
+20
+        MEND
+
+90
+        EXIT
+
+        END
