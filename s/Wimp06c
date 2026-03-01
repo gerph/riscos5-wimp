@@ -120,6 +120,15 @@ SWIWimp_LoadTemplate
 int_load_template
         Entry
 
+        Push    "r0,r1"
+        SWI     OS_WriteS
+        = "LoadTemplate: ",0
+        ALIGN
+        MOV     r0, r5
+        SWI     OS_Write0
+        SWI     OS_NewLine
+        Pull    "r0,r1"
+
         CallCSWI SWI_LoadTemplate
 
         EXIT
