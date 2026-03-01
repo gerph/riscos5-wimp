@@ -38,7 +38,7 @@ Module_BaseAddr
         GET     Hdr:FSNumbers
         GET     Hdr:HighFSI
         GET     Hdr:HostFS
-        GET     Hdr:NDRDebug
+        GET     Hdr:NdrDebug
         GET     Hdr:Font
         GET     Hdr:Wimp
         GET     Hdr:Messages
@@ -53,7 +53,7 @@ Module_BaseAddr
     [ ROOLSource
 GET_PORTABLE SETS "GET     Hdr:Portable"
     |
-GET_PORTABLE SETS "GET     Hdr.Portable"
+GET_PORTABLE SETS "GET     hdr.Portable"
     ]
         $GET_PORTABLE
 
