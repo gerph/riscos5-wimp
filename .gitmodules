@@ -1,0 +1,3 @@
+[submodule "riscos-wimp-templates"]
+	path = riscos-wimp-templates
+	url = https://github.com/gerph/riscos-wimp-templates.git
