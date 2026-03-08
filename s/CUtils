@@ -176,6 +176,7 @@ fclose SIGNATURE
 ; int fgetc(FILE *);
 fgetc SIGNATURE
         Entry
+        MOV     r1, r0
         SWI     XOS_BGet
         MOVVS   r0, #-1
         MOVCS   r0, #-1
@@ -187,8 +188,8 @@ fgetc SIGNATURE
 ; #define SEEK_END 2 /* end of stream (see fseek) */
 fseek SIGNATURE
         Entry   "r4,r5"
-        MOV     r4, r0
-        MOV     r5, r1
+        MOV     r4, r0              ; r4 = file handle
+        MOV     r5, r1              ; r5 = offset
         CMP     r2, #1
         BLT     %FT40               ; SEEK_SET (so the r1 value is correct)
         MOVEQ   r0, #OSArgs_ReadPTR ; SEEK_CUR
@@ -203,10 +204,10 @@ fseek SIGNATURE
         MOV     r2, r5
         SWI     XOS_Args
         MOVVS   r0, #-1
-        MOVVC   r0, r5
+        MOVVC   r0, #0
         EXIT
 
-; long fseek(FILE *f);
+; long ftell(FILE *f);
 ftell SIGNATURE
         Entry   "r4,r5"
         MOV     r1, r0
