@@ -129,6 +129,7 @@ int_load_template
         SWI     OS_NewLine
         Pull    "r0,r1"
 
+        MOV     R1, userblk
         CallCSWI SWI_LoadTemplate
 
         EXIT

@@ -54,6 +54,7 @@ include AsmModule
 ${EXP_HDR}.${COMPONENT}: hdr.${COMPONENT}
        ${CP} $?  $@  ${CPFLAGS}
 
+${OZDIR}.WimpCompat: ${CSOURCES}
 
 #---------------------------------------------------------------------------
 # Dynamic dependencies:
