@@ -16,6 +16,8 @@
 ; Wimp options for an Ursula build of the Window Manager
 ;
 
+module_postfix  SETS    " Gerph: https://github.com/gerph/riscos5-wimp"
+
         Option  ChocolateScreen,        true                    ; Clean cached screen after redraw loops
         Option  ShrinkableAreas,        true                    ; Support Shrinkable Dynamic Areas
         Option  KernelLocksFreePool,    true                    ; use OS_Memory 10 to lock Free Pool for Wimp_ClaimFreeMemory
