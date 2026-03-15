@@ -109,6 +109,7 @@ malloc SIGNATURE
         LDR     r12,[v6]
         MOV     r3,r0
         MOV     R0,#ModHandReason_Claim
+        CLRV
         BL      XROS_Module
         MOVVS   r2,#0
         MOV     r0,r2

@@ -32,9 +32,12 @@
         MOV     r2, r12
         ADRL    r9, ctemplates_workspace        ; Our global_t workspace
         BL      $func
+        CLRV
 ; Return from C, error code is in r0
-        CMP     r0, #0
+        TEQ     r0, #0
+        LDRNE   r12, [r9]                       ; Restore the global workspace for the module
         BLNE    CErrors_decoder
+        STRVS   r0, [sp]
         Pull    "r0-r12"
         MEND
 
@@ -120,6 +123,7 @@ SWIWimp_LoadTemplate
 int_load_template
         Entry
 
+    [ {FALSE}
         Push    "r0,r1"
         SWI     OS_WriteS
         = "LoadTemplate: ",0
@@ -128,6 +132,7 @@ int_load_template
         SWI     OS_Write0
         SWI     OS_NewLine
         Pull    "r0,r1"
+    ]
 
         MOV     R1, userblk
         CallCSWI SWI_LoadTemplate
@@ -147,20 +152,55 @@ err_WimpBadFonts        # 1
 err_WimpBadTemplate     # 1
 err_WimpTooBig          # 1
 
-CErrors_decoder
+CErrors_decoder SIGNATURE
         Entry
 
+        Push    "r0-r2"
+
+        SWI     &100+26
+        SWI     &100+30
+        SWI     &100+4
+        SWI     OS_WriteS
+        = "CEerror. ",0
+        ALIGN
+
+        LDR     r0, [sp]
+        ADD     r0, r0, #'0'
+        SWI     OS_WriteC
+        SWI     OS_NewLine
+
+        Pull    "r0-r2"
+
         MACRO
-        CErrors $name
+        CErrors $name, $errname="", $nodef=""
         TEQ     r0, #err_$name
         BNE     %FT20
-        MyXError $name
+    [ "$errname" = ""
+        MyXError $name,,L
+    |
+        MyXError $errname,,L
+    ]
         B       %FA90
 
+    [ "$nodef" = ""
+     [ "$errname" = ""
         MakeErrorBlock $name
+     |
+        MakeErrorBlock $errname
+     ]
+    ]
 
 20
         MEND
+
+        CErrors WimpNoTemplateFile
+        CErrors WimpNoTemplate,, nodef
+        CErrors WimpTemplateEOF, TemplateEOF
+        CErrors WimpBadFontIndex, WimpBadFonts
+        CErrors WimpFontNotFound, WimpBadFonts, nodef
+        CErrors WimpBadFonts,, nodef
+        CErrors WimpBadTemplate
+        CErrors WimpTooBig,, nodef
 
 90
         EXIT
