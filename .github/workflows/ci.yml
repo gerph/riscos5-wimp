@@ -85,7 +85,7 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "leafname=$leafname" >> $GITHUB_OUTPUT
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: RISCOS-build
           path: ${{ steps.version.outputs.leafname }}
@@ -101,7 +101,7 @@ jobs:
       contents: write
     steps:
       - name: Download built RISC OS binary
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: RISCOS-build
 
